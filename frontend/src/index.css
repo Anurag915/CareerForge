@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', 'Outfit', system-ui, -apple-system, sans-serif;
+  
+  --color-brand-50: #fafafa;
+  --color-brand-100: #f4f4f5;
+  --color-brand-200: #e4e4e7;
+  --color-brand-300: #d4d4d8;
+  --color-brand-400: #a1a1aa;
+  --color-brand-500: #71717a;
+  --color-brand-600: #52525b;
+  --color-brand-700: #3f3f46;
+  --color-brand-800: #27272a;
+  --color-brand-900: #18181b;
+  --color-brand-950: #09090b;
+
+  --color-accent-50: #eff6ff;
+  --color-accent-100: #dbeafe;
+  --color-accent-500: #3b82f6;
+  --color-accent-600: #2563eb;
+  --color-accent-700: #1d4ed8;
+}
+
+:root {
+  background-color: #fafafa;
+  color: #09090b;
+}
+
+/* Base styles for ultra-clean look */
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-image: 
+    radial-gradient(at 0% 0%, hsla(253,16%,7%,0.03) 0, transparent 50%), 
+    radial-gradient(at 50% 0%, hsla(225,39%,30%,0.03) 0, transparent 50%), 
+    radial-gradient(at 100% 0%, hsla(339,49%,30%,0.03) 0, transparent 50%);
+  background-attachment: fixed;
+}
+
+/* Premium Shadows (Vercel-like) */
+.shadow-subtle {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.shadow-card {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+.shadow-premium {
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.05);
+}
+
+/* Border utilities */
+.border-subtle {
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+/* Glassmorphism */
+.glass {
+  background: rgba(250, 250, 250, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Smooth Scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d4d4d8;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1aa;
+}
+
+/* Typography refinements */
+h1, h2, h3, h4, h5, h6 {
+  letter-spacing: -0.02em;
+}
+
+.text-gradient {
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-image: linear-gradient(135deg, #18181b 0%, #71717a 100%);
+}
+
+/* Form elements */
+input, textarea {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+input:focus, textarea:focus {
+  outline: none;
+  border-color: #a1a1aa;
+  box-shadow: 0 0 0 1px #a1a1aa;
+}
