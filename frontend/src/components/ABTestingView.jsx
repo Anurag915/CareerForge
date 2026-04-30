@@ -76,7 +76,7 @@ const ABTestingView = () => {
     const allSelectableResumes = [...resumes, ...tempResumes];
 
     return (
-        <div className="w-full space-y-10">
+        <div className="w-full space-y-8">
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-2xl font-semibold text-brand-900 flex items-center gap-2">

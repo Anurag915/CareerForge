@@ -1,16 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, User, Bot, Sparkles, MessageSquare, Database } from 'lucide-react';
+import { Send, User, Bot, Sparkles, MessageSquare, Database, ChevronLeft, ChevronRight, PlusCircle, Trash2, Box } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const ChatUI = () => {
+    const { user } = useAuth();
     const [resumes, setResumes] = useState([]);
     const [selectedResumeId, setSelectedResumeId] = useState('global');
     const [messages, setMessages] = useState([
-        { role: 'assistant', content: "Hello! I'm your CareerForge AI. Ask me anything about your uploaded documents or your career strategy." }
+        { role: 'assistant', content: "Hello! I'm your CareerForge AI assistant. I've analyzed your document vault and I'm ready to help you with your career strategy. What would you like to discuss today?" }
     ]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
+    const [sidebarOpen, setSidebarOpen] = useState(true);
     const scrollRef = useRef(null);
 
     useEffect(() => {
@@ -53,136 +56,171 @@ const ChatUI = () => {
                 context: res.data.context_used
             }]);
         } catch (err) {
-            setMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I encountered an error processing your request." }]);
+            setMessages(prev => [...prev, { role: 'assistant', content: "I apologize, but I encountered an error. Please try again." }]);
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="w-full grid grid-cols-1 md:grid-cols-4 gap-6 h-[700px]">
-            {/* Sidebar: Resume Selector */}
-            <div className="bg-white border border-brand-100 rounded-2xl p-4 flex flex-col shadow-subtle overflow-hidden">
-                <div className="flex items-center space-x-2 px-2 mb-4">
-                    <Database className="w-4 h-4 text-brand-900" />
-                    <span className="text-sm font-bold text-brand-900 uppercase tracking-wider">Context Source</span>
-                </div>
-                
-                <div className="space-y-1.5 overflow-y-auto pr-1">
-                    <button
-                        onClick={() => setSelectedResumeId('global')}
-                        className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition-all flex items-center space-x-2 ${
-                            selectedResumeId === 'global' 
-                            ? 'bg-brand-900 text-white shadow-md' 
-                            : 'text-brand-500 hover:bg-brand-50'
-                        }`}
-                    >
-                        <Sparkles className="w-4 h-4" />
-                        <span className="font-semibold">Global Knowledge</span>
-                    </button>
-                    
-                    <div className="h-px bg-brand-50 my-2 mx-2"></div>
-                    
-                    {resumes.map(r => (
-                        <button
-                            key={r.id}
-                            onClick={() => setSelectedResumeId(r.id)}
-                            className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition-all flex flex-col ${
-                                selectedResumeId === r.id 
-                                ? 'bg-brand-50 border border-brand-200 text-brand-900' 
-                                : 'text-brand-500 hover:bg-brand-50 border border-transparent'
-                            }`}
-                        >
-                            <span className="font-semibold truncate w-full">{r.filename}</span>
-                            <span className="text-[10px] opacity-60 font-mono mt-0.5">ID: {r.id}</span>
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* Main Chat Area */}
-            <div className="md:col-span-3 bg-white border border-brand-100 rounded-2xl shadow-subtle flex flex-col overflow-hidden relative">
-                {/* Chat Header */}
-                <div className="p-4 border-b border-brand-50 flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-10">
-                    <div className="flex items-center space-x-3">
-                        <div className="bg-brand-50 p-2 rounded-lg">
-                            <MessageSquare className="w-5 h-5 text-brand-900" />
+        <div className="flex flex-col h-[calc(100vh-140px)] w-full">
+            <div className="flex flex-grow bg-white rounded-2xl border border-subtle shadow-premium overflow-hidden">
+                {/* Sidebar: Document Context */}
+                <motion.aside 
+                    initial={false}
+                    animate={{ width: sidebarOpen ? 260 : 0, opacity: sidebarOpen ? 1 : 0 }}
+                    className="bg-brand-50/30 border-r border-brand-100 flex flex-col relative"
+                >
+                    <div className="p-4 flex flex-col h-full min-w-[260px]">
+                        <div className="flex items-center space-x-2 mb-6 px-1">
+                            <Box className="w-4 h-4 text-brand-900" />
+                            <span className="text-[11px] font-bold text-brand-900 uppercase tracking-widest">Context Vault</span>
                         </div>
-                        <div>
-                            <h3 className="font-bold text-brand-900 leading-none">Career Assistant</h3>
-                            <p className="text-[10px] text-brand-400 font-bold uppercase tracking-wider mt-1.5">
-                                Mode: {selectedResumeId === 'global' ? 'Multi-Doc RAG' : 'Specific Resume Chat'}
-                            </p>
+
+                        <div className="flex-grow overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
+                            <button
+                                onClick={() => setSelectedResumeId('global')}
+                                className={`w-full text-left px-4 py-3 rounded-xl text-xs transition-all flex items-center space-x-3 ${
+                                    selectedResumeId === 'global' 
+                                    ? 'bg-brand-900 text-white shadow-lg shadow-brand-900/20' 
+                                    : 'text-brand-500 hover:bg-brand-100/50'
+                                }`}
+                            >
+                                <Sparkles className="w-4 h-4" />
+                                <span className="font-bold">Global Intelligence</span>
+                            </button>
+                            
+                            <div className="py-2">
+                                <div className="h-px bg-brand-100 mx-2"></div>
+                            </div>
+
+                            {resumes.map(r => (
+                                <button
+                                    key={r.id}
+                                    onClick={() => setSelectedResumeId(r.id)}
+                                    className={`w-full text-left px-4 py-3 rounded-xl text-xs transition-all flex flex-col space-y-1 group ${
+                                        selectedResumeId === r.id 
+                                        ? 'bg-white border border-brand-200 text-brand-900 shadow-sm' 
+                                        : 'text-brand-500 hover:bg-brand-100/50'
+                                    }`}
+                                >
+                                    <span className="font-bold truncate w-full">{r.filename}</span>
+                                    <span className="text-[10px] opacity-40 font-mono">ID: {r.id}</span>
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="mt-4 pt-4 border-t border-brand-100">
+                            <button 
+                                onClick={() => setMessages([{ role: 'assistant', content: "Conversation reset. How can I assist you today?" }])}
+                                className="flex items-center space-x-2 text-brand-400 hover:text-brand-900 transition-colors text-[11px] font-bold uppercase tracking-widest px-1"
+                            >
+                                <PlusCircle className="w-4 h-4" />
+                                <span>New Chat</span>
+                            </button>
                         </div>
                     </div>
-                </div>
+                </motion.aside>
 
-                {/* Messages Container */}
-                <div ref={scrollRef} className="flex-grow overflow-y-auto p-6 space-y-6 scroll-smooth">
-                    <AnimatePresence initial={false}>
-                        {messages.map((msg, idx) => (
-                            <motion.div
-                                key={idx}
-                                initial={{ opacity: 0, y: 10, scale: 0.98 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                            >
-                                <div className={`max-w-[85%] flex space-x-3 ${msg.role === 'user' ? 'flex-row-reverse space-x-reverse' : 'flex-row'}`}>
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border shadow-subtle ${
-                                        msg.role === 'user' ? 'bg-white border-brand-100' : 'bg-brand-900 border-brand-900'
-                                    }`}>
-                                        {msg.role === 'user' ? <User className="w-4 h-4 text-brand-500" /> : <Bot className="w-4 h-4 text-white" />}
-                                    </div>
-                                    <div className={`space-y-2`}>
-                                        <div className={`p-4 rounded-2xl text-sm leading-relaxed ${
-                                            msg.role === 'user' 
-                                            ? 'bg-brand-50 text-brand-900 rounded-tr-none border border-brand-100' 
-                                            : 'bg-white text-brand-700 rounded-tl-none border border-brand-100 shadow-sm'
+                {/* Sidebar Toggle Button */}
+                <button 
+                    onClick={() => setSidebarOpen(!sidebarOpen)}
+                    className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-white border border-brand-100 p-1 rounded-r-lg shadow-subtle hover:bg-brand-50 transition-colors"
+                    style={{ marginLeft: sidebarOpen ? 260 : 0 }}
+                >
+                    {sidebarOpen ? <ChevronLeft className="w-4 h-4 text-brand-400" /> : <ChevronRight className="w-4 h-4 text-brand-400" />}
+                </button>
+
+                {/* Main Chat Area */}
+                <div className="flex-grow flex flex-col bg-white relative">
+                    {/* Messages Container */}
+                    <div 
+                        ref={scrollRef} 
+                        className="flex-grow overflow-y-auto px-6 py-8 space-y-8 scroll-smooth custom-scrollbar"
+                    >
+                        <AnimatePresence initial={false}>
+                            {messages.map((msg, idx) => (
+                                <motion.div
+                                    key={idx}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                                >
+                                    <div className={`flex space-x-4 max-w-[85%] ${msg.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-subtle border ${
+                                            msg.role === 'user' ? 'bg-white border-brand-100' : 'bg-brand-900 border-brand-900'
                                         }`}>
-                                            {msg.content}
+                                            {msg.role === 'user' ? <User className="w-5 h-5 text-brand-400" /> : <Bot className="w-5 h-5 text-white" />}
                                         </div>
-                                        {msg.context && (
-                                            <div className="text-[10px] text-brand-400 font-mono italic px-2">
-                                                Source: {msg.context}
+                                        <div className="space-y-2">
+                                            <div className={`p-4 rounded-2xl text-xs leading-relaxed shadow-sm border ${
+                                                msg.role === 'user' 
+                                                ? 'bg-brand-50 text-brand-900 border-brand-100 rounded-tr-none' 
+                                                : 'bg-slate-50/50 text-brand-700 border-brand-100/50 rounded-tl-none'
+                                            }`}>
+                                                {msg.role === 'assistant' ? (
+                                                    <div className="space-y-4">
+                                                        {msg.content.split('\n').map((line, lidx) => {
+                                                            const trimmed = line.trim();
+                                                            if (!trimmed) return <div key={lidx} className="h-1" />;
+                                                            const isBullet = trimmed.startsWith('•') || trimmed.startsWith('-') || /^\d+\./.test(trimmed);
+                                                            return (
+                                                                <div key={lidx} className={`${isBullet ? 'flex items-start space-x-2 pl-1' : ''}`}>
+                                                                    {isBullet && <span className="text-brand-900 font-black mt-1.5 shrink-0 scale-125">·</span>}
+                                                                    <span>{isBullet ? trimmed.replace(/^[•\-\d+\.]\s*/, '') : trimmed}</span>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                ) : msg.content}
                                             </div>
-                                        )}
+                                            {msg.context && (
+                                                <div className="flex items-center space-x-2 px-3">
+                                                    <Database className="w-3 h-3 text-brand-300" />
+                                                    <p className="text-[10px] text-brand-400 font-mono italic truncate max-w-sm">
+                                                        Reference: {msg.context}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
+                                </motion.div>
+                            ))}
+                        </AnimatePresence>
+                        
+                        {loading && (
+                            <div className="flex justify-start">
+                                <div className="bg-brand-50 px-5 py-3 rounded-2xl rounded-tl-none border border-brand-100 flex items-center space-x-2">
+                                    <div className="w-1.5 h-1.5 bg-brand-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                                    <div className="w-1.5 h-1.5 bg-brand-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                                    <div className="w-1.5 h-1.5 bg-brand-400 rounded-full animate-bounce"></div>
                                 </div>
-                            </motion.div>
-                        ))}
-                    </AnimatePresence>
-                    {loading && (
-                        <div className="flex justify-start">
-                            <div className="bg-brand-50 px-4 py-3 rounded-2xl rounded-tl-none border border-brand-100 flex items-center space-x-2">
-                                <div className="w-1.5 h-1.5 bg-brand-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                                <div className="w-1.5 h-1.5 bg-brand-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                                <div className="w-1.5 h-1.5 bg-brand-400 rounded-full animate-bounce"></div>
                             </div>
-                        </div>
-                    )}
-                </div>
+                        )}
+                    </div>
 
-                {/* Input Area */}
-                <div className="p-4 bg-brand-50/50 border-t border-brand-100">
-                    <form onSubmit={handleSend} className="relative group">
-                        <input
-                            type="text"
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            placeholder={selectedResumeId === 'global' ? "Ask about any candidate..." : "Ask about this resume..."}
-                            className="w-full bg-white border border-brand-200 rounded-xl px-5 py-3.5 pr-12 text-sm text-brand-900 placeholder:text-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-900/10 focus:border-brand-900 transition-all shadow-subtle group-focus-within:shadow-md"
-                        />
-                        <button
-                            type="submit"
-                            disabled={loading || !input.trim()}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-brand-900 text-white rounded-lg flex items-center justify-center disabled:opacity-30 hover:bg-black transition-all shadow-md active:scale-95"
-                        >
-                            <Send className="w-4 h-4" />
-                        </button>
-                    </form>
-                    <p className="text-center text-[10px] text-brand-300 font-medium mt-3">
-                        CareerForge AI may hallucinate. Verify critical information.
-                    </p>
+                    {/* Fixed Bottom Input Area */}
+                    <div className="p-6 bg-white border-t border-brand-50 shrink-0">
+                        <form onSubmit={handleSend} className="relative group w-full">
+                            <input
+                                type="text"
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                placeholder={selectedResumeId === 'global' ? "Ask CareerForge anything..." : `Ask about ${resumes.find(r => r.id === selectedResumeId)?.filename || 'this resume'}...`}
+                                className="w-full bg-brand-50/50 border border-brand-100 rounded-xl px-5 py-3 pr-14 text-xs text-brand-900 placeholder:text-slate-500 focus:outline-none focus:ring-4 focus:ring-brand-900/5 focus:border-brand-900/20 transition-all shadow-subtle group-hover:bg-white"
+                            />
+                            <button
+                                type="submit"
+                                disabled={loading || !input.trim()}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-brand-900 text-white rounded-xl flex items-center justify-center disabled:opacity-30 hover:scale-105 active:scale-95 transition-all shadow-lg"
+                            >
+                                <Send className="w-5 h-5" />
+                            </button>
+                        </form>
+                        <p className="text-center text-[10px] text-brand-300 font-bold uppercase tracking-tight mt-4">
+                            AI-Powered Career Intelligence • Powered by Llama 3
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>

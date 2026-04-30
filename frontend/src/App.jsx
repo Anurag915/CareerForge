@@ -211,7 +211,7 @@ function App() {
       </nav>
 
       {/* Main Container */}
-      <main className="flex-grow flex flex-col pt-12 pb-24 px-6 lg:px-12 relative z-10 w-full">
+      <main className="flex-grow flex flex-col pt-4 pb-24 px-6 lg:px-12 relative z-10 w-full">
         
         {/* Global Error */}
         <AnimatePresence>

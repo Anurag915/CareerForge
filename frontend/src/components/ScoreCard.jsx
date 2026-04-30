@@ -53,7 +53,7 @@ const ScoreCard = ({ score, label = "Match Score" }) => {
           >
             {Math.round(score)}<span className="text-xl text-brand-400">%</span>
           </motion.span>
-          <span className="text-[10px] font-medium uppercase tracking-widest text-brand-400 mt-0.5">
+          <span className="text-[9px] font-bold uppercase tracking-wider text-brand-400 mt-1 text-center max-w-[90px] leading-tight">
             {label}
           </span>
         </div>

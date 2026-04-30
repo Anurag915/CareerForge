@@ -33,6 +33,9 @@ def get_chat_response(context, question):
     Rules:
     - If the information is not present in the context, explicitly state: "Based on the provided resume, I do not have information regarding [topic]."
     - Be professional, concise, and accurate.
+    - DO NOT use long paragraphs.
+    - Use bullet points (•) for your response.
+    - Each point should start on a new line.
     - Do not invent facts or hallucinate experience.
 
     ---
@@ -89,6 +92,6 @@ def get_global_chat_response(context, question):
     
     Question: {question}
     
-    Strategic Answer:
+    Strategic Answer (Use bullet points, no paragraphs):
     """
     return query_ollama(prompt, format_json=False)

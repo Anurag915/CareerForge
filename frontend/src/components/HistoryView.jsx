@@ -34,11 +34,11 @@ const HistoryView = () => {
         <div className="w-full space-y-8">
             <div className="flex items-center justify-between mb-2">
                 <div>
-                    <h2 className="text-2xl font-semibold text-brand-900 flex items-center gap-2">
-                        <History className="w-6 h-6" />
+                    <h2 className="text-xl font-semibold text-brand-900 flex items-center gap-2">
+                        <History className="w-5 h-5" />
                         Analysis History
                     </h2>
-                    <p className="text-sm text-brand-500 mt-1">Review your past resume analyses and improvements.</p>
+                    <p className="text-xs text-brand-500 mt-1">Review your past resume analyses and improvements.</p>
                 </div>
                 <div className="px-3 py-1 bg-brand-50 text-brand-700 rounded-full text-xs font-bold border border-brand-100 uppercase tracking-wider">
                     {history.length} Sessions
@@ -70,7 +70,7 @@ const HistoryView = () => {
                                         <FileText className="w-5 h-5 text-brand-600 group-hover:text-white" />
                                     </div>
                                     <div>
-                                        <h4 className="font-semibold text-brand-900 leading-tight">{item.filename}</h4>
+                                        <h4 className="font-semibold text-brand-900 text-sm leading-tight">{item.filename}</h4>
                                         <div className="flex items-center space-x-3 mt-1.5">
                                             <div className="flex items-center text-[11px] text-brand-400 font-medium">
                                                 <Calendar className="w-3 h-3 mr-1" />
@@ -85,8 +85,8 @@ const HistoryView = () => {
                                 </div>
                                 <div className="flex items-center space-x-6">
                                     <div className="text-right">
-                                        <div className="text-2xl font-bold text-brand-900 leading-none">{item.ats_score}%</div>
-                                        <div className="text-[10px] text-brand-400 font-bold uppercase tracking-widest mt-1">ATS Score</div>
+                                        <div className="text-xl font-bold text-brand-900 leading-none">{item.ats_score}%</div>
+                                        <div className="text-[10px] text-brand-400 font-bold uppercase tracking-widest mt-1">Score</div>
                                     </div>
                                     <ChevronRight className="w-5 h-5 text-brand-200 group-hover:text-brand-900 group-hover:translate-x-1 transition-all" />
                                 </div>

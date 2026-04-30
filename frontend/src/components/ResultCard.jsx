@@ -75,10 +75,10 @@ const ResultCard = ({ results, onReset }) => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
         {/* Left Column: Scores */}
-        <div className="md:col-span-1 space-y-6">
+        <div className="md:col-span-1 space-y-4">
           <ScoreCard score={ats_score} label="Weighted Match Score" />
           
-          <div className="bg-white rounded-2xl p-6 border border-subtle shadow-subtle space-y-6">
+          <div className="bg-white rounded-2xl p-4 border border-subtle shadow-subtle space-y-4">
             <div className="flex items-center space-x-2 border-b border-subtle pb-3">
               <Zap className="w-4 h-4 text-brand-900" />
               <h3 className="text-sm font-semibold text-brand-900">Weighted Engine</h3>
@@ -99,11 +99,11 @@ const ResultCard = ({ results, onReset }) => {
         </div>
 
         {/* Right Column: Content */}
-        <div className="md:col-span-2 space-y-6">
+        <div className="md:col-span-2 space-y-4">
           
           {/* Main Skills Analysis */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="bg-white rounded-2xl border border-subtle p-6 shadow-subtle flex flex-col h-full">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="bg-white rounded-2xl border border-subtle p-4 shadow-subtle flex flex-col h-full">
               <div className="flex items-center space-x-2 mb-4">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                 <h3 className="text-sm font-semibold text-brand-900">Matched Skills</h3>
@@ -117,7 +117,7 @@ const ResultCard = ({ results, onReset }) => {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-subtle p-6 shadow-subtle flex flex-col h-full">
+            <div className="bg-white rounded-2xl border border-subtle p-4 shadow-subtle flex flex-col h-full">
               <div className="flex items-center space-x-2 mb-4">
                 <AlertCircle className="w-4 h-4 text-red-500" />
                 <h3 className="text-sm font-semibold text-brand-900">Missing Skills (Critical)</h3>
@@ -133,7 +133,7 @@ const ResultCard = ({ results, onReset }) => {
           </div>
 
           {/* Extracted Profile Data */}
-          <div className="bg-white rounded-2xl border border-subtle p-6 shadow-subtle space-y-6">
+          <div className="bg-white rounded-2xl border border-subtle p-4 shadow-subtle space-y-4">
             <div className="flex items-center space-x-2 border-b border-subtle pb-3">
               <Box className="w-4 h-4 text-brand-600" />
               <h3 className="text-sm font-semibold text-brand-900">Extracted Intelligence</h3>
@@ -183,7 +183,7 @@ const ResultCard = ({ results, onReset }) => {
           </div>
           
           {/* Level 2: Advanced Analysis Section */}
-          <div className="bg-white rounded-2xl border border-subtle p-6 shadow-subtle space-y-6">
+          <div className="bg-white rounded-2xl border border-subtle p-4 shadow-subtle space-y-4">
             <h3 className="text-lg font-semibold text-brand-900 border-b border-subtle pb-3">Advanced Enhancements</h3>
             
             {/* AI Generated Suggestions */}
