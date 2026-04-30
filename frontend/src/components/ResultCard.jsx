@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { CheckCircle2, AlertCircle, RefreshCw, Layers, Award, FileText, Zap, Box } from 'lucide-react';
+import { CheckCircle2, AlertCircle, RefreshCw, Layers, Award, FileText, Zap, Box, Sparkles } from 'lucide-react';
 import ScoreCard from './ScoreCard';
 
 const ResultCard = ({ results, onReset }) => {
@@ -12,6 +12,10 @@ const ResultCard = ({ results, onReset }) => {
     section_score = 0,
     matched_skills = [], 
     missing_skills = [], 
+    recommended_skills = [],
+    skill_distribution = [],
+    improved_points = [],
+    rewritten_resume = "",
     keywords = [],
     top_skills = [],
     tools = [],
@@ -41,7 +45,7 @@ const ResultCard = ({ results, onReset }) => {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="w-full max-w-5xl mx-auto space-y-6"
+      className="w-full space-y-6"
     >
       {/* Dashboard Header */}
       <div className="flex items-center justify-between pb-4 border-b border-subtle">
@@ -145,8 +149,8 @@ const ResultCard = ({ results, onReset }) => {
             {/* Extracted Sections Preview */}
             <div className="pt-4 border-t border-subtle">
               <span className="text-xs font-semibold text-brand-500 uppercase tracking-wider mb-3 block">Section Detection Confidence</span>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {['skills', 'experience', 'education', 'projects'].map(section => (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {['summary', 'skills', 'experience', 'education', 'projects', 'achievements'].map(section => (
                   <div key={section} className="p-3 bg-brand-50 rounded-xl border border-brand-200">
                     <span className="text-[10px] font-bold text-brand-500 uppercase block mb-1">{section}</span>
                     <span className={`text-xs font-medium ${sections[section] && sections[section].length > 10 ? 'text-emerald-600' : 'text-red-500'}`}>
@@ -157,6 +161,149 @@ const ResultCard = ({ results, onReset }) => {
               </div>
             </div>
 
+          </div>
+          
+          {/* Level 2: Advanced Analysis Section */}
+          <div className="bg-white rounded-2xl border border-subtle p-6 shadow-subtle space-y-6">
+            <h3 className="text-lg font-semibold text-brand-900 border-b border-subtle pb-3">Advanced Enhancements</h3>
+            
+            {/* AI Generated Suggestions */}
+            {results.advanced_enhancements && results.advanced_enhancements.length > 0 && (
+              <div className="space-y-3">
+                <span className="text-xs font-semibold text-brand-500 uppercase tracking-wider block mb-2">Strategy to improve ATS Score</span>
+                <ul className="space-y-2">
+                  {results.advanced_enhancements.map((suggestion, i) => (
+                    <li key={i} className="flex items-start space-x-3 p-3 bg-brand-50 rounded-xl border border-brand-100 shadow-sm">
+                      <div className="mt-1 bg-brand-900 text-white rounded-full p-0.5 shrink-0">
+                        <Sparkles className="w-2.5 h-2.5" />
+                      </div>
+                      <span className="text-sm text-brand-800 font-medium leading-snug">{suggestion}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Recommended Skills */}
+            {recommended_skills.length > 0 && (
+              <div>
+                <span className="text-xs font-semibold text-brand-500 uppercase tracking-wider mb-2 block">Recommended to Learn</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {recommended_skills.map((item, i) => (
+                    <span key={i} className="px-2 py-1 bg-amber-50 text-amber-700 text-[11px] font-medium rounded-md border border-amber-100/50">
+                      {renderItem(item)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Improved Bullet Points */}
+            {improved_points.length > 0 && (
+              <div className="space-y-3">
+                <span className="text-xs font-semibold text-brand-500 uppercase tracking-wider block">Bullet Point Rewrites</span>
+                {improved_points.map((pt, i) => (
+                  <div key={i} className="p-3 bg-brand-50 rounded-xl border border-brand-200 space-y-2">
+                    <div className="text-xs text-red-400 line-through">
+                      {pt.original}
+                    </div>
+                    <div className="text-sm text-emerald-700 font-medium">
+                      {pt.improved}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Full Resume Rewrite (Structured) */}
+            {rewritten_resume && typeof rewritten_resume === 'object' && (
+              <div className="space-y-4">
+                <span className="text-xs font-semibold text-brand-500 uppercase tracking-wider block">Fully Rewritten Resume</span>
+                <div className="p-5 bg-zinc-900 text-zinc-300 rounded-xl text-xs font-mono leading-relaxed max-h-96 overflow-y-auto custom-scrollbar shadow-inner space-y-4">
+                  
+                  {/* Summary */}
+                  {rewritten_resume.summary && (
+                    <div>
+                      <div className="text-zinc-500 font-bold mb-1 uppercase tracking-wider text-[10px] border-b border-zinc-800 pb-1">Summary</div>
+                      <div className="whitespace-pre-wrap text-zinc-300">{rewritten_resume.summary}</div>
+                    </div>
+                  )}
+
+                  {/* Skills */}
+                  {rewritten_resume.skills && rewritten_resume.skills.length > 0 && (
+                    <div>
+                      <div className="text-zinc-500 font-bold mb-1 uppercase tracking-wider text-[10px] border-b border-zinc-800 pb-1">Skills</div>
+                      <div className="text-zinc-300">{rewritten_resume.skills.join(" • ")}</div>
+                    </div>
+                  )}
+
+                  {/* Experience */}
+                  {rewritten_resume.experience && rewritten_resume.experience.length > 0 && (
+                    <div>
+                      <div className="text-zinc-500 font-bold mb-2 uppercase tracking-wider text-[10px] border-b border-zinc-800 pb-1">Experience</div>
+                      <div className="space-y-3">
+                        {rewritten_resume.experience.map((exp, idx) => (
+                          <div key={idx} className="bg-zinc-800/50 p-2.5 rounded-lg border border-zinc-800">
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="font-bold text-emerald-400">{exp.role}</span>
+                              <span className="text-zinc-500 text-[10px]">{exp.duration}</span>
+                            </div>
+                            <div className="text-zinc-400 font-medium mb-2">{exp.company}</div>
+                            <ul className="list-disc list-inside space-y-1 text-zinc-300 ml-1">
+                              {exp.points && exp.points.map((pt, i) => <li key={i} className="leading-snug">{pt}</li>)}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Projects */}
+                  {rewritten_resume.projects && rewritten_resume.projects.length > 0 && (
+                    <div>
+                      <div className="text-zinc-500 font-bold mb-2 uppercase tracking-wider text-[10px] border-b border-zinc-800 pb-1">Projects</div>
+                      <div className="space-y-2">
+                        {rewritten_resume.projects.map((proj, idx) => (
+                          <div key={idx} className="bg-zinc-800/50 p-2.5 rounded-lg border border-zinc-800">
+                            <div className="font-bold text-amber-400 mb-1">{proj.name}</div>
+                            <div className="text-zinc-300">{proj.description}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Education */}
+                  {rewritten_resume.education && rewritten_resume.education.length > 0 && (
+                    <div>
+                      <div className="text-zinc-500 font-bold mb-2 uppercase tracking-wider text-[10px] border-b border-zinc-800 pb-1">Education</div>
+                      <div className="space-y-2">
+                        {rewritten_resume.education.map((edu, idx) => (
+                          <div key={idx} className="bg-zinc-800/50 p-2.5 rounded-lg border border-zinc-800">
+                            <div className="font-bold text-blue-400">{edu.degree}</div>
+                            <div className="flex justify-between items-center mt-1">
+                              <span className="text-zinc-300">{edu.institution}</span>
+                              <span className="text-zinc-500 text-[10px]">{edu.year}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Achievements */}
+                  {rewritten_resume.achievements && rewritten_resume.achievements.length > 0 && (
+                    <div>
+                      <div className="text-zinc-500 font-bold mb-1 uppercase tracking-wider text-[10px] border-b border-zinc-800 pb-1">Achievements</div>
+                      <ul className="list-disc list-inside space-y-1 text-zinc-300 ml-1">
+                        {rewritten_resume.achievements.map((ach, idx) => <li key={idx} className="leading-snug">{ach}</li>)}
+                      </ul>
+                    </div>
+                  )}
+
+                </div>
+              </div>
+            )}
           </div>
 
         </div>

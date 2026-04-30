@@ -3,54 +3,51 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { UploadCloud, FileText, X, AlertCircle, Loader2, ArrowRight } from 'lucide-react';
 
 const UploadForm = ({ onUpload, isLoading }) => {
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
   const [jobDescription, setJobDescription] = useState('');
   const [error, setError] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
-    const selectedFile = e.target.files[0];
-    validateAndSetFile(selectedFile);
+    const selectedFiles = Array.from(e.target.files);
+    validateAndAddFiles(selectedFiles);
   };
 
-  const validateAndSetFile = (selectedFile) => {
+  const validateAndAddFiles = (newFiles) => {
     setError('');
-    if (!selectedFile) return;
-
-    if (selectedFile.type !== 'application/pdf') {
-      setError('Please upload a PDF file.');
-      setFile(null);
-      return;
+    const validFiles = [];
+    
+    for (const f of newFiles) {
+        if (f.type !== 'application/pdf') {
+            setError('Only PDF files are allowed.');
+            continue;
+        }
+        if (f.size > 5 * 1024 * 1024) {
+            setError('Each file must be smaller than 5MB.');
+            continue;
+        }
+        validFiles.push(f);
     }
 
-    if (selectedFile.size > 5 * 1024 * 1024) {
-      setError('File must be smaller than 5MB.');
-      setFile(null);
-      return;
-    }
-
-    setFile(selectedFile);
+    setFiles(prev => [...prev, ...validFiles]);
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!file) {
-      setError('A resume file is required.');
+    if (files.length === 0) {
+      setError('At least one resume file is required.');
       return;
     }
     if (!jobDescription.trim()) {
       setError('A job description is required.');
       return;
     }
-    onUpload(file, jobDescription);
+    onUpload(files, jobDescription);
   };
 
-  const clearFile = (e) => {
-    e.stopPropagation();
-    setFile(null);
-    setError('');
-    if (fileInputRef.current) fileInputRef.current.value = '';
+  const removeFile = (index) => {
+    setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -63,7 +60,7 @@ const UploadForm = ({ onUpload, isLoading }) => {
       <div className="bg-white rounded-2xl shadow-card border border-subtle overflow-hidden">
         <div className="p-8 pb-6 border-b border-subtle bg-brand-50/50">
           <h2 className="text-xl font-semibold text-brand-900 tracking-tight">New Analysis</h2>
-          <p className="text-sm text-brand-500 mt-1">Upload your resume and the target job description to generate a match report.</p>
+          <p className="text-sm text-brand-500 mt-1">Upload one or more resumes and the target job description.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="p-8 space-y-8">
@@ -71,7 +68,7 @@ const UploadForm = ({ onUpload, isLoading }) => {
           {/* File Upload Zone */}
           <div className="space-y-3">
             <label className="block text-sm font-medium text-brand-900">
-              Resume <span className="text-brand-400 font-normal">(PDF only)</span>
+              Resumes <span className="text-brand-400 font-normal">(PDF only, multiple allowed)</span>
             </label>
             <div
               onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
@@ -79,53 +76,54 @@ const UploadForm = ({ onUpload, isLoading }) => {
               onDrop={(e) => {
                 e.preventDefault();
                 setIsDragging(false);
-                validateAndSetFile(e.dataTransfer.files[0]);
+                validateAndAddFiles(Array.from(e.dataTransfer.files));
               }}
-              onClick={() => !file && fileInputRef.current.click()}
-              className={`relative border border-dashed rounded-xl transition-colors duration-200 ease-in-out cursor-pointer group
-                ${isDragging ? 'border-brand-900 bg-brand-50' : 'border-brand-300 hover:border-brand-400 bg-white'}
-                ${file ? 'border-solid border-brand-200 bg-brand-50/50 cursor-default' : 'h-32 flex flex-col items-center justify-center'}`}
+              onClick={() => fileInputRef.current.click()}
+              className={`relative border border-dashed rounded-xl transition-colors duration-200 ease-in-out cursor-pointer group p-6
+                ${isDragging ? 'border-brand-900 bg-brand-50' : 'border-brand-300 hover:border-brand-400 bg-white'}`}
             >
-              <input type="file" className="hidden" accept=".pdf" onChange={handleFileChange} ref={fileInputRef} />
+              <input type="file" className="hidden" accept=".pdf" multiple onChange={handleFileChange} ref={fileInputRef} />
 
-              <AnimatePresence mode="wait">
-                {!file ? (
-                  <motion.div 
-                    key="empty"
-                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    className="flex flex-col items-center text-center px-4"
-                  >
-                    <div className="p-2 bg-brand-100 rounded-full mb-3 text-brand-600 group-hover:bg-brand-200 group-hover:text-brand-900 transition-colors">
-                      <UploadCloud className="w-5 h-5" />
-                    </div>
-                    <p className="text-sm font-medium text-brand-700">Click to upload or drag and drop</p>
-                  </motion.div>
-                ) : (
-                  <motion.div 
-                    key="filled"
-                    initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                    className="flex items-center justify-between w-full p-4"
-                  >
-                    <div className="flex items-center space-x-3 overflow-hidden">
-                      <div className="p-2 bg-white border border-brand-200 rounded-lg text-brand-900 shadow-subtle shrink-0">
-                        <FileText className="w-5 h-5" />
-                      </div>
-                      <div className="truncate">
-                        <p className="text-sm font-medium text-brand-900 truncate">{file.name}</p>
-                        <p className="text-xs text-brand-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={clearFile}
-                      className="p-1.5 hover:bg-brand-200 rounded-md transition-colors text-brand-500 shrink-0"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <div className="flex flex-col items-center text-center">
+                <div className="p-2 bg-brand-100 rounded-full mb-3 text-brand-600 group-hover:bg-brand-200 group-hover:text-brand-900 transition-colors">
+                  <UploadCloud className="w-5 h-5" />
+                </div>
+                <p className="text-sm font-medium text-brand-700">Click to upload or drag and drop</p>
+                <p className="text-[10px] text-brand-400 mt-1 uppercase font-bold tracking-wider">Select Multiple Candidates</p>
+              </div>
             </div>
+
+            {/* File List */}
+            <AnimatePresence>
+              {files.length > 0 && (
+                <div className="grid grid-cols-1 gap-2 mt-4">
+                  {files.map((f, idx) => (
+                    <motion.div 
+                      key={`${f.name}-${idx}`}
+                      initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}
+                      className="flex items-center justify-between w-full p-3 bg-brand-50/50 border border-brand-100 rounded-xl"
+                    >
+                      <div className="flex items-center space-x-3 overflow-hidden">
+                        <div className="p-1.5 bg-white border border-brand-200 rounded-lg text-brand-900 shadow-sm shrink-0">
+                          <FileText className="w-4 h-4" />
+                        </div>
+                        <div className="truncate">
+                          <p className="text-xs font-bold text-brand-900 truncate">{f.name}</p>
+                          <p className="text-[10px] text-brand-400">{(f.size / 1024 / 1024).toFixed(2)} MB</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); removeFile(idx); }}
+                        className="p-1 hover:bg-brand-200 rounded-md transition-colors text-brand-400 hover:text-brand-600 shrink-0"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Job Description Textarea */}
@@ -162,9 +160,9 @@ const UploadForm = ({ onUpload, isLoading }) => {
           <div className="pt-2">
             <button
               type="submit"
-              disabled={!file || !jobDescription.trim() || isLoading}
+              disabled={files.length === 0 || !jobDescription.trim() || isLoading}
               className={`w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center space-x-2
-                ${!file || !jobDescription.trim() || isLoading
+                ${files.length === 0 || !jobDescription.trim() || isLoading
                   ? 'bg-brand-100 text-brand-400 cursor-not-allowed'
                   : 'bg-brand-900 text-white hover:bg-brand-800 hover:shadow-card active:scale-[0.99]'}`}
             >

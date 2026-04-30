@@ -15,7 +15,7 @@ const ScoreCard = ({ score, label = "Match Score" }) => {
   const color = getScoreColor(score);
 
   return (
-    <div className="flex flex-col items-center justify-center p-8 bg-white rounded-2xl border border-subtle shadow-subtle h-full">
+    <div className="flex flex-col items-center justify-center p-8 bg-white rounded-2xl border border-subtle shadow-subtle w-full">
       <div className="relative w-40 h-40">
         {/* Background Circle */}
         <svg className="w-full h-full -rotate-90">
