@@ -5,13 +5,14 @@ import os
 import pickle
 
 # Configuration
-VECTOR_STORE_DIR = "data/vector_store"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+VECTOR_STORE_DIR = os.path.join(BASE_DIR, "data", "vector_store")
 MODEL_NAME = 'all-MiniLM-L6-v2'
 GLOBAL_INDEX_PATH = os.path.join(VECTOR_STORE_DIR, "global.index")
 GLOBAL_METADATA_PATH = os.path.join(VECTOR_STORE_DIR, "global.metadata")
 
 if not os.path.exists(VECTOR_STORE_DIR):
-    os.makedirs(VECTOR_STORE_DIR)
+    os.makedirs(VECTOR_STORE_DIR, exist_ok=True)
 
 print("Loading Embedding Model...")
 model = SentenceTransformer(MODEL_NAME)

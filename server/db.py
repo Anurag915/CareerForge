@@ -2,11 +2,13 @@ import sqlite3
 import json
 import os
 
-DB_PATH = "data/resume_analyzer.db"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "data", "resume_analyzer.db")
 
 def init_db():
-    if not os.path.exists("data"):
-        os.makedirs("data")
+    data_dir = os.path.join(BASE_DIR, "data")
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
         
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()

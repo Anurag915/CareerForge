@@ -137,10 +137,12 @@ def upload_resume():
 
     # Create unique ID
     resume_id = str(uuid.uuid4())[:8]
-    temp_path = f"data/temp_{resume_id}.pdf"
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(BASE_DIR, "data")
+    temp_path = os.path.join(data_dir, f"temp_{resume_id}.pdf")
     
-    if not os.path.exists("data"):
-        os.makedirs("data")
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
 
     try:
         file.save(temp_path)
@@ -411,7 +413,9 @@ def analyze_advanced():
     # 1. Standard Upload & Indexing
     # This reuse the logic from /upload but in one go
     resume_id = str(uuid.uuid4())[:8]
-    temp_path = f"data/temp_{resume_id}.pdf"
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(BASE_DIR, "data")
+    temp_path = os.path.join(data_dir, f"temp_{resume_id}.pdf")
     
     try:
         file.save(temp_path)
