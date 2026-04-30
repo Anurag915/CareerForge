@@ -166,45 +166,74 @@ def extract_rule_based_skills(text):
             
     return list(extracted)
 
-def calculate_ats_score(resume_text, jd_text):
+def calculate_ats_score(resume_text, jd_text, sections=None):
     """
-    PHASE 1: Deterministic ATS Scoring
-    score = (matched_skills / total_jd_skills) * 100
+    Production-grade Deterministic Weighted Scoring:
+    - Skill Match: 60%
+    - Experience Match: 25%
+    - Project Depth: 15%
     """
     if not jd_text or not resume_text:
         return {
             "ats_score": 0,
             "matched_skills": [],
-            "missing_skills": []
+            "missing_skills": [],
+            "breakdown": {"skills": 0, "experience": 0, "projects": 0}
         }
 
-    # 1. Extract skills from both
+    # If sections not provided, extract them for depth analysis
+    if not sections:
+        sections = extract_sections(resume_text)
+
+    # 1. Skill Score (60%)
     resume_skills = set(extract_rule_based_skills(resume_text))
     jd_skills = set(extract_rule_based_skills(jd_text))
     
-    if not jd_skills:
-        # If no skills found in JD, we use a default high score if resume has any skills,
-        # or handle it gracefully. Here we'll say 100% if resume has skills, 0% if not.
-        return {
-            "ats_score": 100 if resume_skills else 0,
-            "matched_skills": list(resume_skills),
-            "missing_skills": []
-        }
+    if jd_skills:
+        matched = resume_skills.intersection(jd_skills)
+        missing = jd_skills - resume_skills
+        skill_score = len(matched) / len(jd_skills)
+    else:
+        matched = resume_skills
+        missing = set()
+        skill_score = 1.0 if resume_skills else 0.0
+
+    # 2. Experience Score (25%)
+    # Normalize: 10 years = 100%
+    exp_text = sections.get('experience', '')
+    experience_years = estimate_experience_years(exp_text)
+    experience_score = min(experience_years / 10, 1.0)
+
+    # 3. Project Score (15%)
+    # Normalize: 5 projects = 100%
+    proj_text = sections.get('projects', '')
+    project_count = count_projects(proj_text)
+    project_score = min(project_count / 5, 1.0)
+
+    # 4. Final Weighted Calculation
+    final_score_raw = (
+        (skill_score * 0.60) +
+        (experience_score * 0.25) +
+        (project_score * 0.15)
+    ) * 100
     
-    # 2. Find matches
-    matched = resume_skills.intersection(jd_skills)
-    missing = jd_skills - resume_skills
+    final_score = round(final_score_raw)
     
-    # 3. Compute score
-    score = (len(matched) / len(jd_skills)) * 100
-    final_score = round(score)
-    
-    print(f"DEBUG - DETERMINISTIC ATS SCORE: {final_score}% ({len(matched)}/{len(jd_skills)})")
+    print(f"DEBUG - WEIGHTED SCORE FOR CANDIDATE:")
+    print(f"  > Skills: {round(skill_score*100)}% (Weight 0.6)")
+    print(f"  > Experience: {round(experience_score*100)}% (Weight 0.25)")
+    print(f"  > Projects: {round(project_score*100)}% (Weight 0.15)")
+    print(f"  > TOTAL: {final_score}%")
     
     return {
         "ats_score": final_score,
         "matched_skills": list(matched),
-        "missing_skills": list(missing)
+        "missing_skills": list(missing),
+        "breakdown": {
+            "skills": round(skill_score * 100),
+            "experience": round(experience_score * 100),
+            "projects": round(project_score * 100)
+        }
     }
 
 def count_skills(skills_text):

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { CheckCircle2, AlertCircle, RefreshCw, Layers, Award, FileText, Zap, Box, Sparkles } from 'lucide-react';
+import { CheckCircle2, AlertCircle, RefreshCw, Layers, Award, FileText, Zap, Box, Sparkles, UserPlus } from 'lucide-react';
 import ScoreCard from './ScoreCard';
 
 const ResultCard = ({ results, onReset }) => {
@@ -19,7 +19,8 @@ const ResultCard = ({ results, onReset }) => {
     keywords = [],
     top_skills = [],
     tools = [],
-    sections = {}
+    sections = {},
+    breakdown = { skills: 0, experience: 0, projects: 0 }
   } = results;
 
   const renderItem = (item) => {
@@ -30,13 +31,22 @@ const ResultCard = ({ results, onReset }) => {
     return String(item);
   };
 
-  const MetricPill = ({ label, value, icon: Icon }) => (
-    <div className="flex items-center justify-between p-3 bg-brand-50 rounded-xl border border-brand-200">
-      <div className="flex items-center space-x-2">
-        <Icon className="w-4 h-4 text-brand-500" />
-        <span className="text-xs font-medium text-brand-600">{label}</span>
+  const MetricBar = ({ label, value, icon: Icon, colorClass }) => (
+    <div className="space-y-1.5">
+      <div className="flex justify-between items-center px-1">
+        <div className="flex items-center space-x-2">
+          <Icon className="w-3.5 h-3.5 text-brand-400" />
+          <span className="text-[10px] font-bold text-brand-500 uppercase tracking-wider">{label}</span>
+        </div>
+        <span className="text-[11px] font-bold text-brand-900">{value}%</span>
       </div>
-      <span className="text-sm font-semibold text-brand-900">{Math.round(value)}%</span>
+      <div className="h-1.5 w-full bg-brand-50 rounded-full overflow-hidden border border-brand-100">
+        <motion.div 
+          initial={{ width: 0 }}
+          animate={{ width: `${value}%` }}
+          className={`h-full rounded-full ${colorClass}`}
+        />
+      </div>
     </div>
   );
 
@@ -66,15 +76,24 @@ const ResultCard = ({ results, onReset }) => {
         
         {/* Left Column: Scores */}
         <div className="md:col-span-1 space-y-6">
-          <ScoreCard score={ats_score} label="Final ATS Score" />
+          <ScoreCard score={ats_score} label="Weighted Match Score" />
           
-          <div className="bg-white rounded-2xl p-6 border border-subtle shadow-subtle space-y-4">
-            <h3 className="text-sm font-semibold text-brand-900 border-b border-subtle pb-3">Score Breakdown</h3>
-            <div className="space-y-2.5">
-              <MetricPill label="Semantic Match" value={match_score} icon={Zap} />
-              <MetricPill label="Keyword Density" value={keyword_match_score} icon={Award} />
-              <MetricPill label="Format Sanity" value={format_score} icon={FileText} />
-              <MetricPill label="Section Quality" value={section_score} icon={Layers} />
+          <div className="bg-white rounded-2xl p-6 border border-subtle shadow-subtle space-y-6">
+            <div className="flex items-center space-x-2 border-b border-subtle pb-3">
+              <Zap className="w-4 h-4 text-brand-900" />
+              <h3 className="text-sm font-semibold text-brand-900">Weighted Engine</h3>
+            </div>
+            
+            <div className="space-y-5">
+              <MetricBar label="Skill Match (60%)" value={breakdown.skills} icon={Award} colorClass="bg-brand-900" />
+              <MetricBar label="Experience Depth (25%)" value={breakdown.experience} icon={UserPlus} colorClass="bg-emerald-500" />
+              <MetricBar label="Project Impact (15%)" value={breakdown.projects} icon={Layers} colorClass="bg-amber-500" />
+            </div>
+
+            <div className="pt-4 mt-2 bg-brand-50/50 p-3 rounded-xl border border-brand-100">
+               <p className="text-[10px] text-brand-500 leading-relaxed italic">
+                 "Our deterministic scoring engine uses weighted vectors to ensure your technical skills are the primary ranking factor."
+               </p>
             </div>
           </div>
         </div>
