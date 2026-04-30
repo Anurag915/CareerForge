@@ -11,6 +11,7 @@ const ComparisonDashboard = () => {
     const [topN, setTopN] = useState(0); // 0 means all
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [tempResumes, setTempResumes] = useState([]);
 
     useEffect(() => {
         const fetchResumes = async () => {
@@ -28,6 +29,38 @@ const ComparisonDashboard = () => {
         setSelectedIds(prev => 
             prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
         );
+    };
+
+    const handleBatchUpload = async (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        setLoading(true);
+        const newTemps = [];
+        const newIds = [];
+
+        try {
+            for (const file of files) {
+                const formData = new FormData();
+                formData.append('resume', file);
+                formData.append('persist', 'false');
+                
+                const res = await axios.post('http://localhost:5000/analyze-advanced', formData);
+                newTemps.push({
+                    id: res.data.resume_id,
+                    filename: file.name,
+                    isTemp: true,
+                    ...res.data
+                });
+                newIds.push(res.data.resume_id);
+            }
+            setTempResumes(prev => [...prev, ...newTemps]);
+            setSelectedIds(prev => [...prev, ...newIds]);
+        } catch (err) {
+            setError("Batch upload failed for one or more files.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleCompare = async () => {
@@ -48,28 +81,37 @@ const ComparisonDashboard = () => {
         }
     };
 
+    const allResumes = [...resumes, ...tempResumes];
+
     return (
         <div className="w-full space-y-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
                     <h2 className="text-2xl font-semibold text-brand-900 flex items-center gap-2">
                         <Columns className="w-6 h-6" />
-                        Candidate Comparison
+                        Compare Candidates
                     </h2>
                     <p className="text-sm text-brand-500 mt-1">Select multiple resumes and provide a JD to compare candidates side-by-side.</p>
                 </div>
-                <button
-                    onClick={handleCompare}
-                    disabled={selectedIds.length < 2 || !jobDescription.trim() || loading}
-                    className="flex items-center space-x-2 bg-brand-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm disabled:opacity-30 shadow-lg hover:shadow-xl transition-all"
-                >
-                    {loading ? (
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    ) : (
-                        <BrainCircuit className="w-4 h-4" />
-                    )}
-                    <span>Run AI Comparison</span>
-                </button>
+                <div className="flex items-center space-x-3">
+                    <label className="cursor-pointer bg-white border border-brand-200 text-brand-900 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-brand-50 transition-all shadow-subtle flex items-center space-x-2">
+                        <input type="file" className="hidden" multiple onChange={handleBatchUpload} />
+                        <UserPlus className="w-4 h-4" />
+                        <span>Quick Batch Upload</span>
+                    </label>
+                    <button
+                        onClick={handleCompare}
+                        disabled={selectedIds.length < 2 || !jobDescription.trim() || loading}
+                        className="flex items-center space-x-2 bg-brand-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm disabled:opacity-30 shadow-lg hover:shadow-xl transition-all"
+                    >
+                        {loading ? (
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        ) : (
+                            <BrainCircuit className="w-4 h-4" />
+                        )}
+                        <span>Run AI Comparison</span>
+                    </button>
+                </div>
             </div>
 
             {/* JD & Top N Selection */}
@@ -107,7 +149,7 @@ const ComparisonDashboard = () => {
 
             {/* Selection Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {resumes.map(r => (
+                {allResumes.map(r => (
                     <div
                         key={r.id}
                         onClick={() => toggleSelection(r.id)}
@@ -122,9 +164,12 @@ const ComparisonDashboard = () => {
                                 <Check className="w-3 h-3" />
                             </div>
                         )}
-                        <FileIcon className="w-8 h-8 text-brand-200 mb-3" />
-                        <h4 className="text-xs font-bold text-brand-900 truncate">{r.filename}</h4>
-                        <p className="text-[10px] text-brand-400 font-mono mt-1 uppercase">ID: {r.id}</p>
+                        <FileIcon className={`w-8 h-8 mb-3 ${r.isTemp ? 'text-amber-400' : 'text-brand-200'}`} />
+                        <div className="flex items-center space-x-1 mb-0.5 min-w-0">
+                           <h4 className="text-xs font-bold text-brand-900 truncate">{r.filename}</h4>
+                           {r.isTemp && <span className="text-[7px] bg-amber-100 text-amber-700 px-1 rounded font-black uppercase">Temp</span>}
+                        </div>
+                        <p className="text-[10px] text-brand-400 font-mono uppercase">ID: {r.id}</p>
                     </div>
                 ))}
             </div>

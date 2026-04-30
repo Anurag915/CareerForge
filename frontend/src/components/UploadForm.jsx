@@ -170,7 +170,7 @@ const UploadForm = ({ onUpload, isLoading }) => {
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <>
-                  <span>Analyze Compatibility</span>
+                  <span>Analyze Resume Intelligence</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
