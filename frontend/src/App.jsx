@@ -139,7 +139,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen selection:bg-brand-200 selection:text-brand-900 flex flex-col bg-slate-50/30 w-full">
+    <div className="h-screen selection:bg-brand-200 selection:text-brand-900 flex flex-col bg-slate-50/30 w-full overflow-hidden">
       {/* Ultra-clean Navbar */}
       <nav className="sticky top-0 z-50 glass border-b border-brand-100 w-full">
         <div className="w-full px-6 lg:px-12 h-16 flex justify-between items-center">
@@ -211,7 +211,7 @@ function App() {
       </nav>
 
       {/* Main Container */}
-      <main className="flex-grow flex flex-col pt-4 pb-24 px-6 lg:px-12 relative z-10 w-full">
+      <main className={`flex-grow flex flex-col pt-4 px-6 lg:px-12 relative z-10 w-full min-h-0 ${activeTab === 'chat' ? 'overflow-hidden pb-4' : 'overflow-y-auto pb-24'}`}>
         
         {/* Global Error */}
         <AnimatePresence>
@@ -258,8 +258,8 @@ function App() {
       </main>
 
       {/* Minimal Footer */}
-      {!loading && (
-        <footer className="py-8 text-center text-xs text-brand-400 border-t border-brand-200/50 bg-white/50 backdrop-blur-md relative z-10">
+      {!loading && activeTab !== 'chat' && (
+        <footer className="py-8 text-center text-xs text-brand-400 border-t border-brand-200/50 bg-white/50 backdrop-blur-md relative z-10 shrink-0">
           <p>© 2026 CareerForge. Building better professional tools.</p>
         </footer>
       )}

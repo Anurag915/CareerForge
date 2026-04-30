@@ -77,7 +77,7 @@ const ChatUI = () => {
                             <span className="text-[11px] font-bold text-brand-900 uppercase tracking-widest">Context Vault</span>
                         </div>
 
-                        <div className="flex-grow overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
+                        <div className="flex-grow overflow-y-auto space-y-1.5 pr-1 scrollbar-hide">
                             <button
                                 onClick={() => setSelectedResumeId('global')}
                                 className={`w-full text-left px-4 py-3 rounded-xl text-xs transition-all flex items-center space-x-3 ${
@@ -136,7 +136,7 @@ const ChatUI = () => {
                     {/* Messages Container */}
                     <div 
                         ref={scrollRef} 
-                        className="flex-grow overflow-y-auto px-6 py-8 space-y-8 scroll-smooth custom-scrollbar"
+                        className="flex-grow overflow-y-auto px-6 py-8 space-y-8 scroll-smooth scrollbar-hide"
                     >
                         <AnimatePresence initial={false}>
                             {messages.map((msg, idx) => (
@@ -223,6 +223,10 @@ const ChatUI = () => {
                     </div>
                 </div>
             </div>
+            <style jsx>{`
+                .scrollbar-hide::-webkit-scrollbar { display: none; }
+                .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+            `}</style>
         </div>
     );
 };
