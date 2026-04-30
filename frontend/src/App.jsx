@@ -201,9 +201,27 @@ function App() {
                 </button>
               </div>
             ) : (
-              <div className="flex items-center space-x-2">
-                <button onClick={() => navigate('/login')} className="px-4 py-2 text-xs font-bold text-brand-500 hover:text-brand-900 transition-colors">Sign In</button>
-                <button onClick={() => navigate('/signup')} className="px-4 py-2 bg-brand-900 text-white rounded-xl text-xs font-bold shadow-subtle hover:bg-brand-800 transition-all">Sign Up</button>
+              <div className="flex items-center space-x-1">
+                <button 
+                  onClick={() => navigate('/login')} 
+                  className={`px-4 py-2 text-xs font-bold transition-all rounded-xl ${
+                    location.pathname === '/login' 
+                    ? 'bg-brand-900 text-white shadow-subtle' 
+                    : 'text-brand-500 hover:text-brand-900 hover:bg-brand-50'
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button 
+                  onClick={() => navigate('/signup')} 
+                  className={`px-4 py-2 text-xs font-bold transition-all rounded-xl ${
+                    location.pathname === '/signup' 
+                    ? 'bg-brand-900 text-white shadow-subtle' 
+                    : 'text-brand-500 hover:text-brand-900 hover:bg-brand-50'
+                  }`}
+                >
+                  Sign Up
+                </button>
               </div>
             )}
           </div>

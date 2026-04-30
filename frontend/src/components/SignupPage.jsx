@@ -30,18 +30,18 @@ const SignupPage = () => {
     };
 
     return (
-        <div className="min-h-[90vh] flex items-center justify-center p-4 py-12">
+        <div className="min-h-[90vh] flex items-center justify-center">
             <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="w-full max-w-lg bg-white rounded-3xl shadow-card border border-brand-100 p-8 space-y-8"
+                className="w-full max-w-[420px] bg-white rounded-3xl shadow-card border border-brand-100 p-7 space-y-6"
             >
-                <div className="text-center space-y-2">
-                    <div className="bg-emerald-600 w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <UserPlus className="w-6 h-6 text-white" />
+                <div className="text-center space-y-1.5">
+                    <div className="bg-emerald-600 w-11 h-11 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                        <UserPlus className="w-5 h-5 text-white" />
                     </div>
-                    <h1 className="text-2xl font-bold text-brand-900 tracking-tight">Join the Intelligence</h1>
-                    <p className="text-sm text-brand-500">Create your account to unlock professional-grade resume analysis.</p>
+                    <h1 className="text-xl font-bold text-brand-900 tracking-tight">Join CareerForge</h1>
+                    <p className="text-xs text-brand-500">Create your account to unlock AI resume analysis.</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-5">
