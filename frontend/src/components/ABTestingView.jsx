@@ -76,16 +76,16 @@ const ABTestingView = () => {
     const allSelectableResumes = [...resumes, ...tempResumes];
 
     return (
-        <div className="w-full space-y-8">
+        <div className="w-full space-y-8 theme-transition">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-semibold text-brand-900 flex items-center gap-2">
+                    <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                         <TrendingUp className="w-6 h-6" />
                         Find Best Resume
                     </h2>
-                    <p className="text-sm text-brand-500 mt-1">Determine which version of your resume performs best for a specific role.</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Determine which version of your resume performs best for a specific role.</p>
                 </div>
-                <div className="px-4 py-1.5 bg-brand-900 text-white rounded-full text-[10px] font-bold uppercase tracking-widest">
+                <div className="px-4 py-1.5 bg-slate-900 dark:bg-accent-600 text-white rounded-full text-[10px] font-bold uppercase tracking-widest">
                     Candidate Optimization
                 </div>
             </div>
@@ -93,12 +93,12 @@ const ABTestingView = () => {
             <div className="grid lg:grid-cols-3 gap-8">
                 {/* Step 1: Select Resumes */}
                 <div className="space-y-4">
-                    <div className="flex items-center justify-between text-brand-900 font-bold text-xs uppercase tracking-widest">
+                    <div className="flex items-center justify-between text-slate-900 dark:text-slate-100 font-bold text-xs uppercase tracking-widest">
                         <div className="flex items-center space-x-2">
-                            <span className="w-6 h-6 bg-brand-900 text-white rounded-full flex items-center justify-center text-[10px]">1</span>
+                            <span className="w-6 h-6 bg-slate-900 dark:bg-accent-600 text-white rounded-full flex items-center justify-center text-[10px]">1</span>
                             <span>Select Your Versions</span>
                         </div>
-                        <label className="cursor-pointer bg-brand-50 hover:bg-brand-100 text-brand-700 px-2 py-1 rounded border border-brand-200 transition-colors">
+                        <label className="cursor-pointer bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 transition-colors">
                             <input type="file" className="hidden" onChange={handleQuickUpload} />
                             + Quick Upload
                         </label>
@@ -112,22 +112,22 @@ const ABTestingView = () => {
                                 onClick={() => toggleSelection(r.id)}
                                 className={`p-4 rounded-2xl border cursor-pointer transition-all relative flex items-center space-x-3 ${
                                     selectedIds.includes(r.id) 
-                                    ? 'bg-brand-50 border-brand-900 ring-1 ring-brand-900/10' 
-                                    : 'bg-white border-brand-100 hover:border-brand-200'
+                                    ? 'bg-slate-100 dark:bg-accent-500/10 border-slate-900 dark:border-accent-500 ring-1 ring-slate-900/10 dark:ring-accent-500/20' 
+                                    : 'bg-white dark:bg-slate-800/50 border-slate-100 dark:border-slate-700 hover:border-slate-200 dark:hover:border-slate-600'
                                 }`}
                             >
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${selectedIds.includes(r.id) ? 'bg-brand-900 text-white' : 'bg-brand-50 text-brand-400'}`}>
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${selectedIds.includes(r.id) ? 'bg-slate-900 dark:bg-accent-600 text-white' : 'bg-slate-100 dark:bg-slate-900 text-slate-400'}`}>
                                     <FileText className="w-4 h-4" />
                                 </div>
                                 <div className="flex-grow min-w-0">
                                     <div className="flex items-center space-x-2">
-                                        <h4 className="text-xs font-bold text-brand-900 truncate">{r.filename}</h4>
-                                        {r.isTemp && <span className="text-[8px] bg-brand-200 px-1 rounded font-black text-brand-700 uppercase tracking-tighter">Temp</span>}
+                                        <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{r.filename}</h4>
+                                        {r.isTemp && <span className="text-[8px] bg-slate-200 dark:bg-slate-700 px-1 rounded font-black text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Temp</span>}
                                     </div>
-                                    <p className="text-[10px] text-brand-400 mt-0.5">{r.created_at ? new Date(r.created_at).toLocaleDateString() : 'Just uploaded'}</p>
+                                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{r.created_at ? new Date(r.created_at).toLocaleDateString() : 'Just uploaded'}</p>
                                 </div>
                                 {selectedIds.includes(r.id) && (
-                                    <Check className="w-4 h-4 text-brand-900" />
+                                    <Check className="w-4 h-4 text-slate-900 dark:text-accent-500" />
                                 )}
                             </motion.div>
                         ))}
@@ -136,25 +136,25 @@ const ABTestingView = () => {
 
                 {/* Step 2: Input JD */}
                 <div className="lg:col-span-2 space-y-4">
-                    <div className="flex items-center space-x-2 text-brand-900 font-bold text-xs uppercase tracking-widest">
-                        <span className="w-6 h-6 bg-brand-900 text-white rounded-full flex items-center justify-center text-[10px]">2</span>
+                    <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-xs uppercase tracking-widest">
+                        <span className="w-6 h-6 bg-slate-900 dark:bg-accent-600 text-white rounded-full flex items-center justify-center text-[10px]">2</span>
                         <span>Target Job Description</span>
                     </div>
-                    <div className="bg-white border border-brand-100 p-6 rounded-3xl shadow-subtle space-y-6">
+                    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 rounded-3xl shadow-subtle space-y-6">
                         <textarea 
-                            className="w-full h-48 p-5 bg-brand-50/30 rounded-2xl border border-brand-100 text-sm focus:ring-4 focus:ring-brand-900/5 transition-all outline-none resize-none"
+                            className="w-full h-48 p-5 bg-slate-50/30 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:ring-4 focus:ring-accent-500/5 transition-all outline-none resize-none"
                             placeholder="Paste the job description you want to optimize for..."
                             value={jobDescription}
                             onChange={(e) => setJobDescription(e.target.value)}
                         />
                         <div className="flex items-center justify-between">
-                            <div className="text-[10px] text-brand-400 font-bold uppercase tracking-widest">
+                            <div className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">
                                 {selectedIds.length} Resumes Selected
                             </div>
                             <button
                                 onClick={handleRunTest}
                                 disabled={selectedIds.length < 2 || !jobDescription.trim() || loading}
-                                className="flex items-center space-x-2 bg-brand-900 text-white px-8 py-3 rounded-xl font-bold text-sm disabled:opacity-30 shadow-xl hover:bg-brand-800 transition-all active:scale-95"
+                                className="flex items-center space-x-2 bg-slate-900 dark:bg-accent-600 text-white px-8 py-3 rounded-xl font-bold text-sm disabled:opacity-30 shadow-xl hover:bg-slate-800 dark:hover:bg-accent-700 transition-all active:scale-95"
                             >
                                 {loading ? (
                                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -176,7 +176,7 @@ const ABTestingView = () => {
                         animate={{ opacity: 1, y: 0 }}
                         className="space-y-8"
                     >
-                        <div className="bg-gradient-to-br from-brand-900 to-brand-800 rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden">
+                        <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-accent-600 dark:to-accent-700 rounded-3xl p-8 text-white shadow-premium relative overflow-hidden">
                             <div className="absolute top-0 right-0 p-12 opacity-10">
                                 <Trophy className="w-64 h-64" />
                             </div>
@@ -189,7 +189,7 @@ const ABTestingView = () => {
                                     <h3 className="text-3xl font-bold tracking-tight">
                                         {resumes.find(r => r.id === results.best_resume_id)?.filename}
                                     </h3>
-                                    <p className="text-brand-100 text-sm max-w-xl leading-relaxed">
+                                    <p className="text-slate-100 dark:text-white/80 text-sm max-w-xl leading-relaxed">
                                         {results.ai_explanation.overall_summary}
                                     </p>
                                 </div>
@@ -205,33 +205,33 @@ const ABTestingView = () => {
                         </div>
 
                         <div className="grid md:grid-cols-2 gap-8">
-                            <div className="bg-white border border-brand-100 rounded-3xl p-8 shadow-subtle">
-                                <h3 className="text-xs font-bold text-brand-900 uppercase tracking-widest mb-6">Comparative Ranking</h3>
+                            <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-3xl p-8 shadow-subtle">
+                                <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-widest mb-6">Comparative Ranking</h3>
                                 <div className="space-y-4">
                                     {results.ranking.map((item, idx) => (
-                                        <div key={item.id} className="flex items-center justify-between p-4 bg-brand-50/50 rounded-2xl border border-brand-100">
+                                        <div key={item.id} className="flex items-center justify-between p-4 bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700">
                                             <div className="flex items-center space-x-4">
-                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${idx === 0 ? 'bg-amber-100 text-amber-700' : 'bg-brand-100 text-brand-700'}`}>
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${idx === 0 ? 'bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400' : 'bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300'}`}>
                                                     #{idx + 1}
                                                 </div>
-                                                <span className="text-sm font-bold text-brand-900">{item.filename}</span>
+                                                <span className="text-sm font-bold text-slate-900 dark:text-slate-100">{item.filename}</span>
                                             </div>
-                                            <div className="text-sm font-black text-brand-900">{item.ats_score}%</div>
+                                            <div className="text-sm font-black text-slate-900 dark:text-slate-100">{item.ats_score}%</div>
                                         </div>
                                     ))}
                                 </div>
                             </div>
 
-                            <div className="bg-white border border-brand-100 rounded-3xl p-8 shadow-subtle">
-                                <h3 className="text-xs font-bold text-brand-900 uppercase tracking-widest mb-6">Optimization Insights</h3>
+                            <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-3xl p-8 shadow-subtle">
+                                <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-widest mb-6">Optimization Insights</h3>
                                 <div className="space-y-4">
                                     {results.ai_explanation.individual_suggestions?.map(s => (
-                                        <div key={s.id} className="p-4 rounded-2xl border border-brand-50 bg-brand-50/30">
-                                            <div className="text-[10px] font-bold text-brand-400 uppercase tracking-widest mb-2 flex items-center justify-between">
+                                        <div key={s.id} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-700 bg-slate-50/30 dark:bg-slate-900/30">
+                                            <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 flex items-center justify-between">
                                                 <span>For {resumes.find(r => r.id === s.id)?.filename}</span>
                                                 <Layers className="w-3 h-3" />
                                             </div>
-                                            <p className="text-xs text-brand-700 leading-relaxed font-medium">{s.suggestion}</p>
+                                            <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium">{s.suggestion}</p>
                                         </div>
                                     ))}
                                 </div>

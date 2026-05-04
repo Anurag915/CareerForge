@@ -84,17 +84,17 @@ const ComparisonDashboard = () => {
     const allResumes = [...resumes, ...tempResumes];
 
     return (
-        <div className="w-full space-y-8">
+        <div className="w-full space-y-8 theme-transition">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h2 className="text-2xl font-semibold text-brand-900 flex items-center gap-2">
-                        <Columns className="w-6 h-6" />
+                    <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        <Columns className="w-6 h-6 text-accent-600 dark:text-accent-500" />
                         Compare Candidates
                     </h2>
-                    <p className="text-sm text-brand-500 mt-1">Select multiple resumes and provide a JD to compare candidates side-by-side.</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Select multiple resumes and provide a JD to compare candidates side-by-side.</p>
                 </div>
                 <div className="flex items-center space-x-3">
-                    <label className="cursor-pointer bg-white border border-brand-200 text-brand-900 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-brand-50 transition-all shadow-subtle flex items-center space-x-2">
+                    <label className="cursor-pointer bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-900 transition-all shadow-subtle flex items-center space-x-2">
                         <input type="file" className="hidden" multiple onChange={handleBatchUpload} />
                         <UserPlus className="w-4 h-4" />
                         <span>Quick Batch Upload</span>
@@ -102,7 +102,7 @@ const ComparisonDashboard = () => {
                     <button
                         onClick={handleCompare}
                         disabled={selectedIds.length < 2 || !jobDescription.trim() || loading}
-                        className="flex items-center space-x-2 bg-brand-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm disabled:opacity-30 shadow-lg hover:shadow-xl transition-all"
+                        className="flex items-center space-x-2 bg-slate-900 dark:bg-accent-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm disabled:opacity-30 shadow-lg hover:shadow-xl transition-all"
                     >
                         {loading ? (
                             <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -116,33 +116,33 @@ const ComparisonDashboard = () => {
 
             {/* JD & Top N Selection */}
             <div className="grid md:grid-cols-3 gap-6">
-                <div className="md:col-span-2 bg-white border border-brand-100 p-6 rounded-2xl shadow-subtle">
-                    <label className="block text-xs font-bold text-brand-500 uppercase tracking-widest mb-3">Target Job Description (Required)</label>
+                <div className="md:col-span-2 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-6 rounded-2xl shadow-subtle">
+                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Target Job Description (Required)</label>
                     <textarea 
-                        className="w-full h-32 p-4 bg-brand-50/30 rounded-xl border border-brand-100 text-sm focus:ring-2 focus:ring-brand-900/5 transition-all outline-none"
+                        className="w-full h-32 p-4 bg-slate-50/30 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:ring-4 focus:ring-accent-500/5 transition-all outline-none"
                         placeholder="Paste the job description..."
                         value={jobDescription}
                         onChange={(e) => setJobDescription(e.target.value)}
                     />
                 </div>
-                <div className="bg-white border border-brand-100 p-6 rounded-2xl shadow-subtle flex flex-col justify-between">
+                <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-6 rounded-2xl shadow-subtle flex flex-col justify-between">
                     <div>
-                        <label className="block text-xs font-bold text-brand-500 uppercase tracking-widest mb-3">Shortlist Filter</label>
-                        <p className="text-[11px] text-brand-400 mb-4 leading-relaxed">Limit results to the top <strong>N</strong> candidates. Leave at 0 to see all.</p>
+                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Shortlist Filter</label>
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-4 leading-relaxed">Limit results to the top <strong>N</strong> candidates. Leave at 0 to see all.</p>
                         <div className="relative">
                             <input 
                                 type="number" 
                                 min="0"
-                                className="w-full p-4 bg-brand-50/30 rounded-xl border border-brand-100 text-lg font-bold text-brand-900 outline-none focus:ring-2 focus:ring-brand-900/5"
+                                className="w-full p-4 bg-slate-50/30 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 text-lg font-bold text-slate-900 dark:text-slate-100 outline-none focus:ring-4 focus:ring-accent-500/5"
                                 value={topN}
                                 onChange={(e) => setTopN(e.target.value)}
                             />
-                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-brand-300 pointer-events-none">Candidates</div>
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-300 dark:text-slate-600 pointer-events-none">Candidates</div>
                         </div>
                     </div>
-                    <div className="mt-4 pt-4 border-t border-brand-50 flex items-center justify-between text-[10px] font-bold text-brand-400 uppercase tracking-widest">
+                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                         <span>Selected</span>
-                        <span className="text-brand-900 bg-brand-100 px-2 py-0.5 rounded-full">{selectedIds.length}</span>
+                        <span className="text-slate-900 dark:text-accent-500 bg-slate-100 dark:bg-accent-500/10 px-2 py-0.5 rounded-full">{selectedIds.length}</span>
                     </div>
                 </div>
             </div>
@@ -155,21 +155,21 @@ const ComparisonDashboard = () => {
                         onClick={() => toggleSelection(r.id)}
                         className={`p-4 rounded-2xl border cursor-pointer transition-all relative ${
                             selectedIds.includes(r.id) 
-                            ? 'bg-brand-50 border-brand-900 ring-2 ring-brand-900/10' 
-                            : 'bg-white border-brand-100 hover:border-brand-300'
+                            ? 'bg-slate-100 dark:bg-accent-500/10 border-slate-900 dark:border-accent-500 ring-2 ring-slate-900/10 dark:ring-accent-500/20' 
+                            : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600'
                         }`}
                     >
                         {selectedIds.includes(r.id) && (
-                            <div className="absolute top-2 right-2 bg-brand-900 text-white p-1 rounded-full">
+                            <div className="absolute top-2 right-2 bg-slate-900 dark:bg-accent-600 text-white p-1 rounded-full">
                                 <Check className="w-3 h-3" />
                             </div>
                         )}
-                        <FileIcon className={`w-8 h-8 mb-3 ${r.isTemp ? 'text-amber-400' : 'text-brand-200'}`} />
+                        <FileIcon className={`w-8 h-8 mb-3 ${r.isTemp ? 'text-amber-400' : 'text-slate-200 dark:text-slate-700'}`} />
                         <div className="flex items-center space-x-1 mb-0.5 min-w-0">
-                           <h4 className="text-xs font-bold text-brand-900 truncate">{r.filename}</h4>
-                           {r.isTemp && <span className="text-[7px] bg-amber-100 text-amber-700 px-1 rounded font-black uppercase">Temp</span>}
+                           <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{r.filename}</h4>
+                           {r.isTemp && <span className="text-[7px] bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 px-1 rounded font-black uppercase">Temp</span>}
                         </div>
-                        <p className="text-[10px] text-brand-400 font-mono uppercase">ID: {r.id}</p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono uppercase">ID: {r.id}</p>
                     </div>
                 ))}
             </div>
@@ -180,53 +180,53 @@ const ComparisonDashboard = () => {
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-white border border-brand-100 rounded-3xl overflow-hidden shadow-subtle"
+                        className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl overflow-hidden shadow-premium"
                     >
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
-                                    <tr className="bg-brand-50/50">
-                                        <th className="px-6 py-5 text-[10px] font-bold text-brand-400 uppercase tracking-widest border-b border-brand-50">Metric</th>
+                                    <tr className="bg-slate-50/50 dark:bg-slate-900/50">
+                                        <th className="px-6 py-5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-100 dark:border-slate-700">Metric</th>
                                         {comparisonData.metrics.map(m => (
-                                            <th key={m.id} className="px-6 py-5 text-sm font-bold text-brand-900 border-b border-brand-50">
+                                            <th key={m.id} className="px-6 py-5 text-sm font-bold text-slate-900 dark:text-slate-100 border-b border-slate-100 dark:border-slate-700">
                                                 {m.filename}
                                             </th>
                                         ))}
                                     </tr>
                                 </thead>
                                 <tbody className="text-sm">
-                                    <tr className="hover:bg-brand-50/30 transition-colors">
-                                        <td className="px-6 py-4 font-semibold text-brand-500 border-b border-brand-50/50 uppercase text-[10px] tracking-widest">Rank</td>
+                                    <tr className="hover:bg-slate-50/30 dark:hover:bg-slate-900/30 transition-colors">
+                                        <td className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-500 border-b border-slate-50/50 dark:border-slate-700 uppercase text-[10px] tracking-widest">Rank</td>
                                         {comparisonData.metrics.map((m, idx) => (
-                                            <td key={m.id} className="px-6 py-4 border-b border-brand-50/50">
-                                                <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold ${idx === 0 ? 'bg-amber-100 text-amber-700 ring-1 ring-amber-200' : 'bg-brand-100 text-brand-700'}`}>
+                                            <td key={m.id} className="px-6 py-4 border-b border-slate-50/50 dark:border-slate-700">
+                                                <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold ${idx === 0 ? 'bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 ring-1 ring-amber-200 dark:ring-amber-500/20' : 'bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300'}`}>
                                                     #{idx + 1}
                                                 </span>
                                             </td>
                                         ))}
                                     </tr>
-                                    <tr className="hover:bg-brand-50/30 transition-colors">
-                                        <td className="px-6 py-4 font-semibold text-brand-500 border-b border-brand-50/50">ATS Score</td>
+                                    <tr className="hover:bg-slate-50/30 dark:hover:bg-slate-900/30 transition-colors">
+                                        <td className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-50/50 dark:border-slate-700">ATS Score</td>
                                         {comparisonData.metrics.map(m => (
-                                            <td key={m.id} className="px-6 py-4 font-bold text-emerald-600 border-b border-brand-50/50">{m.ats_score}%</td>
+                                            <td key={m.id} className="px-6 py-4 font-bold text-emerald-600 dark:text-emerald-500 border-b border-slate-50/50 dark:border-slate-700">{m.ats_score}%</td>
                                         ))}
                                     </tr>
-                                    <tr className="hover:bg-brand-50/30 transition-colors">
-                                        <td className="px-6 py-4 font-semibold text-brand-500 border-b border-brand-50/50">Skills Match</td>
+                                    <tr className="hover:bg-slate-50/30 dark:hover:bg-slate-900/30 transition-colors">
+                                        <td className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-50/50 dark:border-slate-700">Skills Match</td>
                                         {comparisonData.metrics.map(m => (
-                                            <td key={m.id} className="px-6 py-4 font-bold text-brand-900 border-b border-brand-50/50">{m.skills_count} extracted</td>
+                                            <td key={m.id} className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100 border-b border-slate-50/50 dark:border-slate-700">{m.skills_count} extracted</td>
                                         ))}
                                     </tr>
-                                    <tr className="hover:bg-brand-50/30 transition-colors">
-                                        <td className="px-6 py-4 font-semibold text-brand-500 border-b border-brand-50/50">Missing Keys</td>
+                                    <tr className="hover:bg-slate-50/30 dark:hover:bg-slate-900/30 transition-colors">
+                                        <td className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-50/50 dark:border-slate-700">Missing Keys</td>
                                         {comparisonData.metrics.map(m => (
-                                            <td key={m.id} className="px-6 py-4 font-bold text-red-500 border-b border-brand-50/50">{m.missing_skills.length} skills</td>
+                                            <td key={m.id} className="px-6 py-4 font-bold text-red-500 dark:text-red-400 border-b border-slate-50/50 dark:border-slate-700">{m.missing_skills.length} skills</td>
                                         ))}
                                     </tr>
-                                    <tr className="hover:bg-brand-50/30 transition-colors">
-                                        <td className="px-6 py-4 font-semibold text-brand-500 border-b border-brand-50/50">Experience</td>
+                                    <tr className="hover:bg-slate-50/30 dark:hover:bg-slate-900/30 transition-colors">
+                                        <td className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-50/50 dark:border-slate-700">Experience</td>
                                         {comparisonData.metrics.map(m => (
-                                            <td key={m.id} className="px-6 py-4 font-bold text-brand-900 border-b border-brand-50/50">{m.experience_years} years</td>
+                                            <td key={m.id} className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100 border-b border-slate-50/50 dark:border-slate-700">{m.experience_years} years</td>
                                         ))}
                                     </tr>
                                 </tbody>
@@ -234,20 +234,20 @@ const ComparisonDashboard = () => {
                         </div>
 
                         {/* AI Synthesis */}
-                        <div className="p-8 bg-brand-50/30 border-t border-brand-50">
+                        <div className="p-8 bg-slate-50/30 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-700">
                             <div className="flex items-center space-x-2 mb-4">
-                                <Sparkles className="w-5 h-5 text-brand-900" />
-                                <h3 className="font-bold text-brand-900">AI Comparison Synthesis</h3>
+                                <Sparkles className="w-5 h-5 text-slate-900 dark:text-accent-500" />
+                                <h3 className="font-bold text-slate-900 dark:text-slate-100">AI Comparison Synthesis</h3>
                             </div>
-                            <p className="text-sm text-brand-700 leading-relaxed bg-white p-6 rounded-2xl border border-brand-100 shadow-sm">
+                            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
                                 {comparisonData.llm_analysis.overall_summary || "No summary available."}
                             </p>
                             
                             <div className="grid sm:grid-cols-2 gap-4 mt-6">
                                 {comparisonData.llm_analysis.individual_suggestions?.map(s => (
-                                    <div key={s.id} className="bg-white p-4 rounded-xl border border-brand-100 text-xs shadow-subtle">
-                                        <span className="font-bold text-brand-900 uppercase tracking-wider block mb-2 underline decoration-brand-200 underline-offset-4">ID: {s.id} Suggestion</span>
-                                        <p className="text-brand-500 leading-relaxed font-medium">{s.suggestion}</p>
+                                    <div key={s.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs shadow-subtle">
+                                        <span className="font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider block mb-2 underline decoration-slate-200 dark:decoration-slate-700 underline-offset-4 transition-colors group-hover:decoration-accent-500">ID: {s.id} Suggestion</span>
+                                        <p className="text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{s.suggestion}</p>
                                     </div>
                                 ))}
                             </div>

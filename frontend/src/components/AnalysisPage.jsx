@@ -37,24 +37,24 @@ const AnalysisPage = () => {
 
     if (loading) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
-                <Loader2 className="w-12 h-12 text-brand-600 animate-spin" />
-                <p className="text-brand-500 font-medium">Reconstructing analysis intelligence...</p>
+            <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4 theme-transition">
+                <Loader2 className="w-12 h-12 text-slate-900 dark:text-accent-500 animate-spin" />
+                <p className="text-slate-500 dark:text-slate-400 font-medium">Reconstructing analysis intelligence...</p>
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className="max-w-2xl mx-auto mt-12 p-8 bg-red-50 border border-red-200 rounded-2xl text-center space-y-4">
-                <div className="bg-red-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto">
-                    <AlertCircle className="w-6 h-6 text-red-600" />
+            <div className="max-w-2xl mx-auto mt-12 p-8 bg-red-50 dark:bg-red-500/5 border border-red-200 dark:border-red-500/20 rounded-2xl text-center space-y-4 theme-transition">
+                <div className="bg-red-100 dark:bg-red-500/20 w-12 h-12 rounded-full flex items-center justify-center mx-auto">
+                    <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
                 </div>
-                <h2 className="text-xl font-bold text-red-900">Analysis Not Found</h2>
-                <p className="text-red-700">{error}</p>
+                <h2 className="text-xl font-bold text-red-900 dark:text-red-100">Analysis Not Found</h2>
+                <p className="text-red-700 dark:text-red-300/80">{error}</p>
                 <button 
                     onClick={() => navigate('/')}
-                    className="px-6 py-2 bg-white border border-red-200 text-red-800 rounded-lg font-semibold hover:bg-red-100 transition-colors"
+                    className="px-6 py-2 bg-white dark:bg-slate-800 border border-red-200 dark:border-red-500/20 text-red-800 dark:text-red-400 rounded-lg font-semibold hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
                 >
                     Go Back Home
                 </button>
@@ -64,11 +64,11 @@ const AnalysisPage = () => {
 
     if (!data) {
         return (
-            <div className="max-w-2xl mx-auto mt-12 p-8 text-center space-y-4">
-                <p className="text-brand-500 font-medium">No analysis data available. Please upload a resume first.</p>
+            <div className="max-w-2xl mx-auto mt-12 p-8 text-center space-y-4 theme-transition">
+                <p className="text-slate-500 dark:text-slate-400 font-medium">No analysis data available. Please upload a resume first.</p>
                 <button 
                     onClick={() => navigate('/')}
-                    className="px-6 py-2 bg-brand-900 text-white rounded-lg font-semibold hover:bg-brand-800 transition-colors"
+                    className="px-6 py-2 bg-slate-900 dark:bg-accent-600 text-white rounded-lg font-semibold hover:bg-slate-800 dark:hover:bg-accent-700 transition-colors"
                 >
                     Analyze Resume
                 </button>
@@ -77,10 +77,10 @@ const AnalysisPage = () => {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 theme-transition">
             <button 
                 onClick={() => navigate('/')}
-                className="flex items-center space-x-2 text-brand-500 hover:text-brand-900 transition-colors group mb-2"
+                className="flex items-center space-x-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors group mb-2"
             >
                 <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                 <span className="text-sm font-semibold">Back to Dashboard</span>
