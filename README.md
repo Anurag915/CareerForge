@@ -30,7 +30,7 @@
 
 | | |
 |:---:|:---:|
-| ![Dashboard](Outputs/Screenshot%202026-04-30%20103232.png) | ![Analysis](Outputs/Screenshot%202026-04-30%20103250.png) |
+| ![Dashboard](Outputs/Screenshot 2026-05-05 161711.png) | ![Analysis](Outputs/Screenshot%202026-04-30%20103250.png) |
 | ![Intelligence](Outputs/Screenshot%202026-04-30%20115431.png) | ![Chat UI](Outputs/Screenshot%202026-04-30%20170907.png) |
 | ![Vault](Outputs/Screenshot%202026-04-30%20171115.png) | ![Comparison](Outputs/Screenshot%202026-04-30%20171129.png) |
 | ![Analytics](Outputs/Screenshot%202026-04-30%20171353.png) | ![Results](Outputs/Screenshot%202026-04-30%20171408.png) |
