@@ -60,16 +60,41 @@ def init_db():
         )
     ''')
 
-    # Chat messages table [NEW]
+    # Jobs table [PHASE 1/8]
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS chat_messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+        CREATE TABLE IF NOT EXISTS jobs (
+            id TEXT PRIMARY KEY,
             user_id TEXT,
-            resume_id TEXT, -- NULL for Global Intelligence
-            role TEXT,
-            content TEXT,
+            type TEXT, -- 'ats' or 'optimization'
+            status TEXT DEFAULT 'pending', -- 'pending', 'processing', 'completed', 'failed'
+            progress INTEGER DEFAULT 0,
+            result TEXT, -- JSON string
+            started_at TIMESTAMP,
+            completed_at TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+
+    # Ensure columns exist for legacy DBs [PHASE 8]
+    try:
+        cursor.execute("ALTER TABLE jobs ADD COLUMN started_at TIMESTAMP")
+    except sqlite3.OperationalError: pass
+    try:
+        cursor.execute("ALTER TABLE jobs ADD COLUMN completed_at TIMESTAMP")
+    except sqlite3.OperationalError: pass
+
+    # Notifications table [PHASE 8]
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS notifications (
+            id TEXT PRIMARY KEY,
+            user_id TEXT,
+            job_id TEXT,
+            message TEXT,
+            is_read INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id),
+            FOREIGN KEY (job_id) REFERENCES jobs (id)
         )
     ''')
     
@@ -209,3 +234,96 @@ def get_chat_history(user_id, resume_id=None):
         print(f"Error getting chat history: {e}")
         return []
     return history
+# --- PHASE 1: JOB SYSTEM UTILITIES ---
+
+def create_job(user_id, job_type):
+    import uuid
+    job_id = str(uuid.uuid4())
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO jobs (id, user_id, type, status)
+        VALUES (?, ?, ?, 'pending')
+    ''', (job_id, user_id, job_type))
+    conn.commit()
+    conn.close()
+    return job_id
+
+def update_job_status(job_id, status, progress=0):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    if status == 'processing':
+        cursor.execute('''
+            UPDATE jobs SET status = ?, progress = ?, started_at = CURRENT_TIMESTAMP 
+            WHERE id = ? AND started_at IS NULL
+        ''', (status, progress, job_id))
+    else:
+        cursor.execute('''
+            UPDATE jobs SET status = ?, progress = ? WHERE id = ?
+        ''', (status, progress, job_id))
+    conn.commit()
+    conn.close()
+
+def update_job_result(job_id, result_dict):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE jobs SET status = 'completed', progress = 100, result = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ?
+    ''', (json.dumps(result_dict), job_id))
+    conn.commit()
+    conn.close()
+
+def get_job(job_id):
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM jobs WHERE id = ?', (job_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        res = dict(row)
+        if res['result']:
+            res['result'] = json.loads(res['result'])
+        return res
+    return None
+
+# --- NOTIFICATION UTILS [PHASE 8] ---
+
+def create_notification(user_id, job_id, message):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    import uuid
+    notif_id = str(uuid.uuid4())
+    cursor.execute('INSERT INTO notifications (id, user_id, job_id, message) VALUES (?, ?, ?, ?)',
+                   (notif_id, user_id, job_id, message))
+    conn.commit()
+    conn.close()
+    return notif_id
+
+def get_notifications(user_id, only_unread=False):
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    query = 'SELECT * FROM notifications WHERE user_id = ?'
+    if only_unread:
+        query += ' AND is_read = 0'
+    query += ' ORDER BY created_at DESC LIMIT 50'
+    cursor.execute(query, (user_id,))
+    notifs = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return notifs
+
+def mark_notification_read(notif_id, user_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?', (notif_id, user_id))
+    conn.commit()
+    conn.close()
+
+def get_unread_count(user_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0', (user_id,))
+    count = cursor.fetchone()[0]
+    conn.close()
+    return count

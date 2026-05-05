@@ -26,7 +26,8 @@ const formatFileSize = (bytes) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 };
 
-const UploadForm = ({ onUpload, isLoading }) => {
+const UploadForm = ({ onUpload, isLoading, processingQueue = [] }) => {
+  const isProcessing = processingQueue.some(t => t.status === 'processing');
   const [files, setFiles] = useState([]);
   const [jobDescription, setJobDescription] = useState("");
   const [error, setError] = useState("");
@@ -111,7 +112,7 @@ const UploadForm = ({ onUpload, isLoading }) => {
     
     try {
       const token = localStorage.getItem('token');
-      await axios.post('http://localhost:5000/validate-jd', 
+      await axios.post('http://127.0.0.1:5000/validate-jd', 
         { job_description: jobDescription },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -398,13 +399,13 @@ const UploadForm = ({ onUpload, isLoading }) => {
                 ) : (
                   <button
                     type="submit"
-                    disabled={!isFormValid || isLoading}
+                    disabled={!isFormValid || isLoading || isProcessing}
                     className="w-full sm:w-auto px-10 py-4 bg-emerald-500 text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-emerald-500/20 hover:bg-emerald-600 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale disabled:hover:scale-100 flex items-center justify-center gap-3"
                   >
-                    {isLoading ? (
+                    {isLoading || isProcessing ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Processing...</span>
+                        <span>{isProcessing ? 'Processing in Background...' : 'Starting Analysis...'}</span>
                       </>
                     ) : (
                       <>

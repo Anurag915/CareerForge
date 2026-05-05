@@ -1,5 +1,9 @@
+import eventlet
+eventlet.monkey_patch()
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit
 import sqlite3
 import json
 import os
@@ -12,14 +16,30 @@ from utils import extract_text, extract_sections, clean_output
 import jwt
 import bcrypt
 import datetime
+import threading
 from functools import wraps
+from tasks import analyze_resume_job
 
 app = Flask(__name__)
 CORS(app)
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # Security Configuration
 JWT_SECRET = "careerforge-super-secret-key-2026" # In production, use os.getenv('JWT_SECRET')
 JWT_ALGORITHM = "HS256"
+
+# Initialize Socket.IO with Redis as message queue for cross-process communication
+socketio = SocketIO(app, cors_allowed_origins="*", message_queue=os.getenv('REDIS_URL', 'redis://localhost:6379/0'))
+
+from flask_socketio import join_room
+
+@socketio.on('join')
+def on_join(data):
+    user_id = data.get('user_id')
+    if user_id:
+        join_room(f"user_{user_id}")
+        print(f"User {user_id} joined their notification room.")
 
 # Initialize Database
 db.init_db()
@@ -426,6 +446,136 @@ def get_chat_history():
     history = db.get_chat_history(user_id, resume_id)
     return jsonify(history)
 
+# --- PHASE 1: JOB SYSTEM APIs ---
+
+@app.route('/api/job/start', methods=['POST'])
+@auth_required
+def start_job():
+    data = request.json
+    job_type = data.get('type', 'ats')
+    user_id = request.user['user_id']
+    
+    job_id = db.create_job(user_id, job_type)
+    
+    # PHASE 3: Dispatch to Scalable Queue (Celery/Redis)
+    # This replaces threading.Thread for multi-server reliability
+    analyze_resume_job.delay(job_id, data, user_id)
+    
+    return jsonify({"jobId": job_id, "status": "pending"})
+
+@app.route('/api/job/<job_id>', methods=['GET'])
+@auth_required
+def get_job_status(job_id):
+    job = db.get_job(job_id)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+    
+    # Security: Ensure user owns the job
+    if job['user_id'] != request.user['user_id']:
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    # Phase 8: Strict Access Control
+    # If the job isn't completed, remove any partial result data
+    if job['status'] != 'completed':
+        job['result'] = None
+        
+    return jsonify(job)
+
+@app.route('/api/jobs', methods=['GET'])
+@auth_required
+def get_all_jobs():
+    user_id = request.user['user_id']
+    conn = sqlite3.connect(db.DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    # Updated to include Phase 8 timestamps
+    cursor.execute('''
+        SELECT id, type, status, progress, created_at, started_at, completed_at 
+        FROM jobs WHERE user_id = ? ORDER BY created_at DESC
+    ''', (user_id,))
+    jobs = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return jsonify(jobs)
+
+# --- PHASE 8: NOTIFICATION APIs ---
+
+@app.route('/api/notifications', methods=['GET'])
+@auth_required
+def get_notifications():
+    only_unread = request.args.get('unread') == 'true'
+    notifs = db.get_notifications(request.user['user_id'], only_unread)
+    return jsonify(notifs)
+
+@app.route('/api/notifications/unread-count', methods=['GET'])
+@auth_required
+def get_unread_count():
+    count = db.get_unread_count(request.user['user_id'])
+    return jsonify({"count": count})
+
+@app.route('/api/notifications/<notif_id>/read', methods=['POST'])
+@auth_required
+def mark_read(notif_id):
+    db.mark_notification_read(notif_id, request.user['user_id'])
+    return jsonify({"success": True})
+
+def process_job_background(job_id, data, user_id):
+    """
+    Refined Background worker for Phase 2.
+    Processes the job and updates the SQLite database.
+    """
+    try:
+        db.update_job_status(job_id, 'processing', 10)
+        
+        job_type = data.get('type')
+        if job_type == 'ats':
+            # 1. Parsing & Indexing
+            db.update_job_status(job_id, 'processing', 20)
+            resume_id = data.get('resume_id')
+            text = data.get('resume_text')
+            sections = utils.extract_sections(text)
+            
+            if data.get('persist'):
+                db.save_resume({
+                    "id": resume_id,
+                    "filename": data.get('filename'),
+                    "raw_text": text,
+                    "doc_type": "resume",
+                    "sections": sections
+                }, user_id)
+            
+            rag.create_index(resume_id, text)
+            
+            # 2. LLM Analysis
+            db.update_job_status(job_id, 'processing', 50)
+            raw_analysis = llm.analyze_resume_ats(sections, data.get('job_description'))
+            analysis_data = clean_output(raw_analysis)
+            
+            # 3. Deterministic ATS Scoring
+            db.update_job_status(job_id, 'processing', 80)
+            ats_results = utils.calculate_ats_score(text, data.get('job_description'), sections)
+            analysis_data.update(ats_results)
+            
+            # 4. Save Analysis Result
+            final_score = ats_results['ats_score']
+            if data.get('persist'):
+                db.save_analysis(resume_id, user_id, data.get('job_description'), final_score, analysis_data)
+                
+            # Finalize
+            result = {
+                "resume_id": resume_id,
+                "filename": data.get('filename'),
+                "sections": sections,
+                **analysis_data
+            }
+            db.update_job_result(job_id, result)
+            
+        else:
+            db.update_job_status(job_id, 'failed', 0)
+            
+    except Exception as e:
+        print(f"JOB ERROR ({job_id}): {e}")
+        db.update_job_status(job_id, 'failed', 0)
+
 @app.route('/validate-jd', methods=['POST'])
 @auth_required
 def validate_jd():
@@ -452,56 +602,42 @@ def analyze_advanced():
         return jsonify({"error": "The provided job description appears to be invalid or too short. Please provide a real job description."}), 400
         
     persist = request.form.get('persist', 'true').lower() == 'true'
+    user_id = request.user['user_id']
     
-    # 1. Standard Upload & Indexing
-    # This reuse the logic from /upload but in one go
+    # Fast Extraction
     resume_id = str(uuid.uuid4())[:8]
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(BASE_DIR, "data")
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
+        
     temp_path = os.path.join(data_dir, f"temp_{resume_id}.pdf")
+    file.save(temp_path)
+    text = extract_text(temp_path)
+    if os.path.exists(temp_path): os.remove(temp_path)
+
+    # Create Job
+    job_id = db.create_job(user_id, 'ats')
     
-    try:
-        file.save(temp_path)
-        text = extract_text(temp_path)
-        sections = extract_sections(text)
-        
-        user_id = request.user['user_id']
-        if persist:
-            db.save_resume({
-                "id": resume_id,
-                "filename": file.filename,
-                "raw_text": text,
-                "doc_type": "resume",
-                "sections": sections
-            }, user_id)
-        rag.create_index(resume_id, text)
-
-        # 2. Run analysis (Using structured sections)
-        raw_analysis = llm.analyze_resume_ats(sections, job_description)
-        analysis_data = clean_output(raw_analysis)
-        
-        # PHASE 1: Deterministic ATS Scoring (Override LLM if needed)
-        ats_results = utils.calculate_ats_score(text, job_description)
-        analysis_data.update(ats_results)
-        final_score = ats_results['ats_score']
-        
-        # 3. Save to history (only if persisting)
-        if persist:
-            print(f"DEBUG - PERSISTING ANALYSIS FOR {resume_id} (Score: {final_score})")
-            db.save_analysis(resume_id, user_id, job_description, final_score, analysis_data)
-
-        return jsonify({
-            "resume_id": resume_id,
-            "filename": file.filename,
-            "sections": sections,
-            **analysis_data
-        })
-    except Exception as e:
-        print(f"API ERROR: {e}")
-        return jsonify({"error": str(e)}), 500
-    finally:
-        if os.path.exists(temp_path): os.remove(temp_path)
+    # Background Processing Data
+    job_data = {
+        "type": "ats",
+        "filename": file.filename,
+        "resume_text": text,
+        "job_description": job_description,
+        "persist": persist,
+        "resume_id": resume_id
+    }
+    
+    # PHASE 3: Enqueue to Redis
+    analyze_resume_job.delay(job_id, job_data, user_id)
+    
+    return jsonify({
+        "jobId": job_id,
+        "status": "pending",
+        "message": "Analysis started in background"
+    })
 
 if __name__ == '__main__':
-    print("Level 3 AI Resume Server Starting...")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    print("Level 3 AI Resume Server Starting with WebSockets...")
+    # use_reloader=False is critical on Windows with eventlet to prevent port lock
+    socketio.run(app, host='127.0.0.1', port=5000, debug=True, use_reloader=False)

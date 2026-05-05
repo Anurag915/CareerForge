@@ -15,7 +15,7 @@ const ABTestingView = () => {
     useEffect(() => {
         const fetchResumes = async () => {
             try {
-                const res = await axios.get('http://localhost:5000/resumes');
+                const res = await axios.get('http://127.0.0.1:5000/resumes');
                 setResumes(res.data);
             } catch (err) {
                 console.error("Failed to fetch resumes:", err);
@@ -40,7 +40,7 @@ const ABTestingView = () => {
         formData.append('persist', 'false'); // Do not save to DB permanently yet
 
         try {
-            const res = await axios.post('http://localhost:5000/analyze-advanced', formData);
+            const res = await axios.post('http://127.0.0.1:5000/analyze-advanced', formData);
             const newTemp = {
                 id: res.data.resume_id,
                 filename: file.filename || file.name,
@@ -61,7 +61,7 @@ const ABTestingView = () => {
         setLoading(true);
         setError(null);
         try {
-            const res = await axios.post('http://localhost:5000/compare-my-resumes', {
+            const res = await axios.post('http://127.0.0.1:5000/compare-my-resumes', {
                 resume_ids: selectedIds,
                 job_description: jobDescription
             });

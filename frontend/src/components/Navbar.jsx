@@ -3,19 +3,76 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Layers, Search, MessageSquare, TrendingUp, Columns, FolderOpen, 
     History, Sun, Moon, Bell, Command, ChevronDown, Settings, 
-    CreditCard, LogOut, User, Menu, X, Shield 
+    CreditCard, LogOut, User, Menu, X, Shield, Loader2, Activity 
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import axios from 'axios';
+import { io } from 'socket.io-client';
 
 import { useTheme } from '../context/ThemeContext';
 
-const Navbar = ({ activeTab, onTabClick, user, logout }) => {
+const Navbar = ({ activeTab, onTabClick, user, logout, processingQueue = [] }) => {
+    const activeTasks = processingQueue.filter(t => t.status === 'processing');
+    const hasActiveTasks = activeTasks.length > 0;
     const { theme, toggleTheme } = useTheme();
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+    const [notifOpen, setNotifOpen] = useState(false);
+    const [notifications, setNotifications] = useState([]);
+    const [unreadCount, setUnreadCount] = useState(0);
     const navigate = useNavigate();
     const location = useLocation();
+
+    // Phase 8: Notifications Logic
+    useEffect(() => {
+        if (!user) return;
+
+        const fetchInitialData = async () => {
+            try {
+                const countRes = await axios.get('http://127.0.0.1:5000/api/notifications/unread-count', {
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                });
+                setUnreadCount(countRes.data.count);
+            } catch (err) { console.error("Notif error", err); }
+        };
+
+        fetchInitialData();
+    }, [user]);
+
+    // Handle Socket notifications
+    useEffect(() => {
+        if (!user) return;
+        const socket = io('http://127.0.0.1:5000');
+        
+        socket.emit('join', { user_id: user.user_id });
+
+        socket.on('notification:new', (data) => {
+            setUnreadCount(prev => prev + 1);
+            if (notifOpen) fetchNotifications();
+        });
+
+        return () => socket.disconnect();
+    }, [user, notifOpen]);
+
+    const fetchNotifications = async () => {
+        try {
+            const res = await axios.get('http://127.0.0.1:5000/api/notifications', {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            setNotifications(res.data);
+        } catch (err) { console.error("Fetch notifs error", err); }
+    };
+
+    const handleMarkAsRead = async (id) => {
+        try {
+            await axios.post(`http://127.0.0.1:5000/api/notifications/${id}/read`, {}, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            setUnreadCount(prev => Math.max(0, prev - 1));
+            setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: 1 } : n));
+        } catch (err) { console.error("Mark read error", err); }
+    };
 
     // Scroll detection for shadow and glass effect
     useEffect(() => {
@@ -33,6 +90,7 @@ const Navbar = ({ activeTab, onTabClick, user, logout }) => {
         ...(user?.role === 'hiring_manager' ? [{ id: 'compare', label: 'Comparison', icon: Columns }] : []),
         { id: 'resumes', label: 'Library', icon: FolderOpen },
         { id: 'history', label: 'History', icon: History },
+        { id: 'jobs', label: 'Queue', icon: Activity },
     ], [user?.role]);
 
     const NavItem = ({ item, isMobile = false }) => {
@@ -115,14 +173,117 @@ const Navbar = ({ activeTab, onTabClick, user, logout }) => {
                     
                     {/* Desktop Extras */}
                     <div className="hidden md:flex items-center space-x-4 mr-4 border-r border-slate-200 dark:border-slate-800 pr-4">
-                        <button className="p-2 text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 transition-colors">
-                            <Search className="w-5 h-5" />
-                        </button>
-                        <button className="relative p-2 text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 transition-colors">
-                            <Bell className="w-5 h-5" />
-                            <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-accent-500 border-2 border-white dark:border-slate-950 rounded-full" />
-                        </button>
+                        <div className="flex items-center space-x-2 md:space-x-4">
+                            {/* Background Processing Indicator (Phase 6 Premium UX) */}
+                            <AnimatePresence>
+                                {hasActiveTasks && (
+                                    <motion.div 
+                                        initial={{ opacity: 0, x: 20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, scale: 0.8 }}
+                                        className="hidden lg:flex flex-col items-end gap-1.5 px-4 py-2 rounded-2xl bg-blue-500/5 border border-blue-500/20 mr-2 min-w-[200px]"
+                                    >
+                                        <div className="flex items-center justify-between w-full">
+                                            <div className="flex items-center gap-2">
+                                                <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin" />
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400">
+                                                    {activeTasks.length === 1 ? 'Processing Resume' : `Analyzing ${activeTasks.length} Resumes`}
+                                                </span>
+                                            </div>
+                                            <span className="text-[10px] font-black text-blue-500">
+                                                {Math.round(activeTasks.reduce((acc, t) => acc + (t.progress || 0), 0) / activeTasks.length)}%
+                                            </span>
+                                        </div>
+                                        
+                                        {/* Progress Bar */}
+                                        <div className="w-full h-1 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                                            <motion.div 
+                                                className="h-full bg-blue-500"
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${Math.round(activeTasks.reduce((acc, t) => acc + (t.progress || 0), 0) / activeTasks.length)}%` }}
+                                            />
+                                        </div>
 
+                                        {/* Step Indicator */}
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-[8px] font-bold text-slate-500 dark:text-slate-400 truncate max-w-[150px]">
+                                                {activeTasks[0].message || 'Initializing...'}
+                                            </span>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
+                            <div className="flex items-center space-x-1 sm:space-x-2 bg-slate-100/50 dark:bg-slate-800/50 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 relative">
+                                <button 
+                                    onClick={() => {
+                                        setNotifOpen(!notifOpen);
+                                        if (!notifOpen) fetchNotifications();
+                                    }}
+                                    className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors relative"
+                                >
+                                    <Bell className="w-5 h-5" />
+                                    {unreadCount > 0 && (
+                                        <span className="absolute top-2 right-2 w-4 h-4 bg-red-500 rounded-full border-2 border-white dark:border-slate-900 flex items-center justify-center text-[8px] font-black text-white">
+                                            {unreadCount}
+                                        </span>
+                                    )}
+                                </button>
+
+                                {/* Notification Dropdown [PHASE 8] */}
+                                <AnimatePresence>
+                                    {notifOpen && (
+                                        <motion.div 
+                                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                            className="absolute top-full right-0 mt-3 w-80 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl z-[500] overflow-hidden"
+                                        >
+                                            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
+                                                <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">Notifications</h3>
+                                                <span className="text-[10px] font-bold text-slate-500 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800">
+                                                    {unreadCount} New
+                                                </span>
+                                            </div>
+                                            <div className="max-h-[350px] overflow-y-auto">
+                                                {notifications.length === 0 ? (
+                                                    <div className="p-8 text-center">
+                                                        <Bell className="w-8 h-8 text-slate-200 dark:text-slate-700 mx-auto mb-3" />
+                                                        <p className="text-xs text-slate-500 font-medium">Your inbox is clear</p>
+                                                    </div>
+                                                ) : (
+                                                    notifications.map(n => (
+                                                        <div 
+                                                            key={n.id} 
+                                                            className={`p-4 border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors relative group ${!n.is_read ? 'bg-blue-50/30 dark:bg-blue-500/5' : ''}`}
+                                                            onClick={() => !n.is_read && handleMarkAsRead(n.id)}
+                                                        >
+                                                            {!n.is_read && <div className="absolute left-2 top-1/2 -translate-y-1/2 w-1 h-1 bg-blue-500 rounded-full" />}
+                                                            <p className="text-xs font-medium text-slate-700 dark:text-slate-300 leading-relaxed pr-6">
+                                                                {n.message}
+                                                            </p>
+                                                            <div className="flex items-center justify-between mt-2">
+                                                                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">
+                                                                    {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                </span>
+                                                                {n.job_id && (
+                                                                    <button 
+                                                                        onClick={(e) => { e.stopPropagation(); onTabClick('jobs'); setNotifOpen(false); }}
+                                                                        className="text-[9px] font-black text-blue-500 hover:underline uppercase tracking-widest"
+                                                                    >
+                                                                        View Job
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                        </div>
                     </div>
 
                     {!user ? (

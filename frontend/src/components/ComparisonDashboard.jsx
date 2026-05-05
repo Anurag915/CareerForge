@@ -16,7 +16,7 @@ const ComparisonDashboard = () => {
     useEffect(() => {
         const fetchResumes = async () => {
             try {
-                const res = await axios.get('http://localhost:5000/resumes');
+                const res = await axios.get('http://127.0.0.1:5000/resumes');
                 setResumes(res.data);
             } catch (err) {
                 console.error("Failed to fetch resumes:", err);
@@ -45,7 +45,7 @@ const ComparisonDashboard = () => {
                 formData.append('resume', file);
                 formData.append('persist', 'false');
                 
-                const res = await axios.post('http://localhost:5000/analyze-advanced', formData);
+                const res = await axios.post('http://127.0.0.1:5000/analyze-advanced', formData);
                 newTemps.push({
                     id: res.data.resume_id,
                     filename: file.name,
@@ -68,7 +68,7 @@ const ComparisonDashboard = () => {
         setLoading(true);
         setError(null);
         try {
-            const res = await axios.post('http://localhost:5000/compare', { 
+            const res = await axios.post('http://127.0.0.1:5000/compare', { 
                 resume_ids: selectedIds,
                 job_description: jobDescription,
                 top_n: topN > 0 ? parseInt(topN) : null

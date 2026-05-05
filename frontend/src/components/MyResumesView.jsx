@@ -12,7 +12,7 @@ const MyResumesView = () => {
     const fetchResumes = async () => {
         setLoading(true);
         try {
-            const res = await axios.get('http://localhost:5000/resumes');
+            const res = await axios.get('http://127.0.0.1:5000/resumes');
             setResumes(res.data);
         } catch (err) {
             console.error("Failed to fetch resumes:", err);
@@ -36,7 +36,7 @@ const MyResumesView = () => {
                 formData.append('resume', file);
                 formData.append('type', 'resume');
                 formData.append('persist', 'true');
-                await axios.post('http://localhost:5000/upload', formData);
+                await axios.post('http://127.0.0.1:5000/upload', formData);
             }
             fetchResumes();
         } catch (err) {

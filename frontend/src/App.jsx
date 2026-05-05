@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { io } from 'socket.io-client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import UploadForm from './components/UploadForm';
@@ -11,6 +12,7 @@ import ComparisonDashboard from './components/ComparisonDashboard';
 import AnalysisPage from './components/AnalysisPage';
 import ABTestingView from './components/ABTestingView';
 import MyResumesView from './components/MyResumesView';
+import JobsView from './components/JobsView';
 import { useAuth } from './context/AuthContext';
 import { useTheme } from './context/ThemeContext';
 import LoginPage from './components/LoginPage';
@@ -50,16 +52,84 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
+  const [processingQueue, setProcessingQueue] = useState([]);
   
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const socketRef = useRef(null);
+
+  // Phase 4: Socket.IO Setup
+  useEffect(() => {
+    socketRef.current = io('http://127.0.0.1:5000');
+    
+    // Phase 5: Job Recovery on mount
+    const recoverJobs = async () => {
+      const savedJobIds = JSON.parse(localStorage.getItem('activeJobIds') || '[]');
+      if (savedJobIds.length === 0) return;
+
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const recoveredTasks = [];
+      
+      for (const jobId of savedJobIds) {
+        try {
+          const res = await axios.get(`http://127.0.0.1:5000/api/job/${jobId}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          const job = res.data;
+          if (job.status === 'processing' || job.status === 'pending') {
+            recoveredTasks.push({
+              id: job.id,
+              name: `Recovered Task (${job.id.substr(0,4)})`, // Or store names in LS
+              status: job.status,
+              progress: job.progress,
+              message: 'Resuming tracking...'
+            });
+
+            // Re-attach socket listener
+            socketRef.current.on(`job:${job.id}`, (update) => {
+              setProcessingQueue(prev => prev.map(t => 
+                t.id === job.id ? { ...t, ...update } : t
+              ));
+              if (update.status === 'completed' || update.status === 'failed') {
+                removeJobFromPersistence(job.id);
+              }
+            });
+          }
+        } catch (err) {
+          console.error(`Failed to recover job ${jobId}`, err);
+        }
+      }
+      setProcessingQueue(recoveredTasks);
+    };
+
+    recoverJobs();
+    
+    return () => {
+      if (socketRef.current) socketRef.current.disconnect();
+    };
+  }, []);
+
+  const saveJobToPersistence = (jobId) => {
+    const saved = JSON.parse(localStorage.getItem('activeJobIds') || '[]');
+    if (!saved.includes(jobId)) {
+      localStorage.setItem('activeJobIds', JSON.stringify([...saved, jobId]));
+    }
+  };
+
+  const removeJobFromPersistence = (jobId) => {
+    const saved = JSON.parse(localStorage.getItem('activeJobIds') || '[]');
+    localStorage.setItem('activeJobIds', JSON.stringify(saved.filter(id => id !== jobId)));
+  };
 
   const handleUpload = async (files, jobDescription) => {
+    // Phase 4: Non-blocking with Real-time Socket Updates
     setLoading(true);
     setError(null);
-    setResults(null);
     
     try {
       const uploadPromises = files.map(async (file) => {
@@ -67,21 +137,68 @@ function App() {
         formData.append('resume', file);
         formData.append('job_description', jobDescription);
         
-        return axios.post('http://localhost:5000/analyze-advanced', formData, {
+        // 1. Start the Job
+        const res = await axios.post('http://127.0.0.1:5000/analyze-advanced', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
+        
+        const jobId = res.data.jobId;
+        saveJobToPersistence(jobId);
+        
+        // 2. Add to Local Queue with initial status
+        const newTask = { 
+          id: jobId, 
+          name: file.name, 
+          status: 'processing', 
+          progress: 10, 
+          message: 'Initializing...' 
+        };
+        setProcessingQueue(prev => [...prev, newTask]);
+        
+        // 3. Listen for Real-time Socket Updates
+        if (socketRef.current) {
+          socketRef.current.on(`job:${jobId}`, (update) => {
+            setProcessingQueue(prev => prev.map(t => 
+              t.id === jobId ? { ...t, ...update } : t
+            ));
+            
+            if (update.status === 'completed' || update.status === 'failed') {
+              removeJobFromPersistence(jobId);
+              socketRef.current.off(`job:${jobId}`);
+            }
+          });
+        }
+        
+        return res.data;
       });
 
       await Promise.all(uploadPromises);
       
+      // Navigate to history but keep the background processing visible in Navbar
       setTimeout(() => {
         setLoading(false);
         handleTabClick('history');
-      }, 1500);
+      }, 800);
 
     } catch (err) {
       console.error('Upload error:', err);
       setError(err.response?.data?.error || 'Batch Analysis Failed: One or more files could not be processed.');
+      setLoading(false);
+    }
+  };
+
+  const handleViewJobResult = async (jobId) => {
+    try {
+      setLoading(true);
+      const res = await axios.get(`http://127.0.0.1:5000/api/job/${jobId}`);
+      if (res.data.status === 'completed' && res.data.result) {
+        setResults(res.data.result);
+        setActiveTab('analyze'); // Navigate to dashboard
+      }
+    } catch (err) {
+      console.error("Failed to load job result:", err);
+      setError("Could not retrieve job results. Please try again.");
+    } finally {
       setLoading(false);
     }
   };
@@ -115,6 +232,7 @@ function App() {
         </ProtectedRoute>
       );
       case 'history': return <HistoryView />;
+      case 'jobs': return <JobsView onViewResult={handleViewJobResult} />;
       case 'resumes': return <MyResumesView />;
       default:
         return results ? (
@@ -179,7 +297,7 @@ function App() {
 
             {/* Main Action Area */}
             <div className="w-full">
-              <UploadForm onUpload={handleUpload} isLoading={loading} />
+              <UploadForm onUpload={handleUpload} isLoading={loading} processingQueue={processingQueue} />
             </div>
           </div>
         );
@@ -195,6 +313,7 @@ function App() {
         onTabClick={handleTabClick} 
         user={user} 
         logout={logout}
+        processingQueue={processingQueue}
       />
 
       {/* Main Container */}

@@ -12,7 +12,7 @@ const HistoryView = () => {
     useEffect(() => {
         const fetchHistory = async () => {
             try {
-                const res = await axios.get('http://localhost:5000/history');
+                const res = await axios.get('http://127.0.0.1:5000/history');
                 setHistory(res.data);
             } catch (err) {
                 console.error("Failed to fetch history:", err);

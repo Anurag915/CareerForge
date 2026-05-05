@@ -30,7 +30,7 @@ const ChatUI = () => {
   useEffect(() => {
     const fetchResumes = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/resumes");
+        const res = await axios.get("http://127.0.0.1:5000/resumes");
         setResumes(res.data);
       } catch (err) {
         console.error("Failed to fetch resumes:", err);
@@ -41,7 +41,7 @@ const ChatUI = () => {
       try {
         setHistoryLoading(true);
         const res = await axios.get(
-          `http://localhost:5000/chat/history?resume_id=${selectedResumeId}`,
+          `http://127.0.0.1:5000/chat/history?resume_id=${selectedResumeId}`,
         );
         if (res.data.length > 0) {
           setMessages(
@@ -103,7 +103,7 @@ const ChatUI = () => {
       const payload = { question: input };
       if (selectedResumeId === "global") payload.resume_id = null;
 
-      const res = await axios.post(`http://localhost:5000${endpoint}`, payload);
+      const res = await axios.post(`http://127.0.0.1:5000${endpoint}`, payload);
 
       setMessages((prev) => [
         ...prev,

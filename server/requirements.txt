@@ -1,0 +1,11 @@
+flask
+flask-cors
+flask-socketio
+eventlet
+celery
+redis
+PyJWT
+bcrypt
+python-docx
+PyPDF2
+ollama
