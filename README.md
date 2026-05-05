@@ -30,12 +30,11 @@
 
 | | |
 |:---:|:---:|
-| ![Dashboard](Outputs/Screenshot 2026-05-05 161711.png) | ![Analysis](Outputs/Screenshot%202026-04-30%20103250.png) |
-| ![Intelligence](Outputs/Screenshot%202026-04-30%20115431.png) | ![Chat UI](Outputs/Screenshot%202026-04-30%20170907.png) |
-| ![Vault](Outputs/Screenshot%202026-04-30%20171115.png) | ![Comparison](Outputs/Screenshot%202026-04-30%20171129.png) |
-| ![Analytics](Outputs/Screenshot%202026-04-30%20171353.png) | ![Results](Outputs/Screenshot%202026-04-30%20171408.png) |
-| ![SaaS Interface](Outputs/Screenshot%202026-04-30%20171518.png) | ![Modern UI](Outputs/Screenshot%202026-04-30%20172957.png) |
-| ![Compact Design](Outputs/Screenshot%202026-04-30%20173012.png) | ![Final Polish](Outputs/Screenshot%202026-04-30%20174326.png) |
+| ![Dashboard](Outputs/Screenshot%202026-05-05%20161711.png) | ![Analysis](Outputs/Screenshot%202026-05-05%20161728.png) |
+| ![Intelligence](Outputs/Screenshot%202026-05-05%20161802.png) | ![Chat UI](Outputs/Screenshot%202026-05-05%20161928.png) |
+| ![Vault](Outputs/Screenshot%202026-05-05%20161948.png) | ![Comparison](Outputs/Screenshot%202026-05-05%20162008.png) |
+| ![Analytics](Outputs/Screenshot%202026-05-05%20162253.png) | ![Results](Outputs/Screenshot%202026-05-05%20162304.png) |
+| ![SaaS Interface](Outputs/Screenshot%202026-05-05%20162324.png) | ![Modern UI](Outputs/Screenshot%202026-05-05%20162335.png) |
 
 ---
 
