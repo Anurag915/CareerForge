@@ -78,13 +78,38 @@ const AnalysisPage = () => {
 
     return (
         <div className="space-y-6 theme-transition">
-            <button 
-                onClick={() => navigate('/')}
-                className="flex items-center space-x-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors group mb-2"
-            >
-                <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                <span className="text-sm font-semibold">Back to Dashboard</span>
-            </button>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                <button 
+                    onClick={() => navigate('/')}
+                    className="flex items-center space-x-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors group"
+                >
+                    <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                    <span className="text-sm font-semibold">Back to Dashboard</span>
+                </button>
+                <div className="flex items-center gap-3">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Analysis Context:</span>
+                    <div className="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                        {data.filename}
+                    </div>
+                </div>
+            </div>
+
+            {/* Target Job Description Section */}
+            <div className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm mb-6">
+                <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex items-center gap-3">
+                    <div className="p-2 bg-blue-500/10 rounded-lg text-blue-600 dark:text-blue-400">
+                        <AlertCircle className="w-4 h-4" />
+                    </div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight uppercase tracking-wider">Target Job Description</h3>
+                </div>
+                <div className="p-6">
+                    <div className="max-h-40 overflow-y-auto custom-scrollbar">
+                        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap italic">
+                            "{data.job_description || 'No job description provided for this analysis.'}"
+                        </p>
+                    </div>
+                </div>
+            </div>
 
             <ResultCard results={data} onReset={() => navigate('/')} />
         </div>

@@ -1,18 +1,16 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Inter', 'Outfit', system-ui, -apple-system, sans-serif;
-  
-  --color-brand-50: var(--bg-card);
-  --color-brand-100: var(--border-subtle);
-  --color-brand-500: var(--text-muted);
-  --color-brand-900: var(--text-primary);
-
-  --color-accent-500: #3b82f6;
-  --color-accent-600: #2563eb;
+  --dark-mode: selector;
 }
 
 :root {
+  --font-sans: 'Inter', 'Outfit', system-ui, -apple-system, sans-serif;
+  
+  /* Tailwind v4 Auto-Discovery Variables */
+  --color-accent-500: #3b82f6;
+  --color-accent-600: #2563eb;
+  
   --bg-app: #f8fafc;
   --bg-sidebar: #ffffff;
   --bg-card: #ffffff;
@@ -23,9 +21,6 @@
   
   --glass-bg: rgba(255, 255, 255, 0.7);
   --glass-border: rgba(226, 232, 240, 0.5);
-  
-  background-color: var(--bg-app);
-  color: var(--text-primary);
 }
 
 .dark {
@@ -39,9 +34,6 @@
 
   --glass-bg: rgba(15, 23, 42, 0.7);
   --glass-border: rgba(51, 65, 85, 0.5);
-
-  background-color: var(--bg-app);
-  color: var(--text-primary);
 }
 
 /* Base styles for ultra-clean look */
@@ -50,8 +42,6 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: var(--bg-app);
-  color: var(--text-primary);
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 

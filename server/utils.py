@@ -1,6 +1,8 @@
 import pdfplumber
 import json
 import re
+import math
+from collections import Counter
 
 def extract_text(file):
     text = ""
@@ -11,6 +13,34 @@ def extract_text(file):
 
 def chunk_text(text, chunk_size=500):
     return [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]
+
+def is_gibberish(text):
+    """
+    Heuristic to detect gibberish/invalid job descriptions.
+    Checks for: 
+    1. Minimum word count
+    2. Average word length (extremely high/low usually indicates nonsense)
+    3. Character entropy (random strings have high entropy)
+    """
+    if not text or len(text.strip()) < 50:
+        return True
+    
+    words = text.split()
+    if len(words) < 10:
+        return True
+    
+    # Check average word length (most English words are 3-10 chars)
+    avg_len = sum(len(word) for word in words) / len(words)
+    if avg_len < 3 or avg_len > 15:
+        return True
+        
+    # Check vowel density (gibberish often lacks vowels or has too many)
+    vowels = len(re.findall(r'[aeiouAEIOU]', text))
+    vowel_density = vowels / len(text) if len(text) > 0 else 0
+    if vowel_density < 0.15 or vowel_density > 0.60:
+        return True
+
+    return False
 
 def clean_output(text):
     if not text:
@@ -189,14 +219,25 @@ def calculate_ats_score(resume_text, jd_text, sections=None):
     resume_skills = set(extract_rule_based_skills(resume_text))
     jd_skills = set(extract_rule_based_skills(jd_text))
     
+    # GIBBERISH/VALIDATION CHECK
+    if is_gibberish(jd_text):
+        return {
+            "ats_score": 0,
+            "matched_skills": [],
+            "missing_skills": [],
+            "error": "Invalid or meaningless job description detected. Please provide a real job description.",
+            "breakdown": {"skills": 0, "experience": 0, "projects": 0}
+        }
+    
     if jd_skills:
         matched = resume_skills.intersection(jd_skills)
         missing = jd_skills - resume_skills
         skill_score = len(matched) / len(jd_skills)
     else:
-        matched = resume_skills
+        # If JD is valid text but has no extractable skills, we cannot reward or penalize based on skills
+        matched = set()
         missing = set()
-        skill_score = 1.0 if resume_skills else 0.0
+        skill_score = 0.0
 
     # 2. Experience Score (25%)
     # Normalize: 10 years = 100%

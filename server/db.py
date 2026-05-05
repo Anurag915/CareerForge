@@ -49,14 +49,27 @@ def init_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS analysis_results (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT,
             resume_id TEXT,
+            user_id TEXT,
             job_description TEXT,
-            ats_score INTEGER,
+            ats_score REAL,
             detailed_json TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users (id),
-            FOREIGN KEY (resume_id) REFERENCES resumes (id)
+            FOREIGN KEY (resume_id) REFERENCES resumes (id),
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+
+    # Chat messages table [NEW]
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT,
+            resume_id TEXT, -- NULL for Global Intelligence
+            role TEXT,
+            content TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
         )
     ''')
     
@@ -151,4 +164,48 @@ def get_history(user_id):
     ''', (user_id,))
     history = [dict(row) for row in cursor.fetchall()]
     conn.close()
+    return history
+
+def save_chat_message(user_id, role, content, resume_id=None):
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO chat_messages (user_id, role, content, resume_id)
+            VALUES (?, ?, ?, ?)
+        ''', (user_id, role, content, resume_id))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Error saving chat message: {e}")
+        return False
+
+def get_chat_history(user_id, resume_id=None):
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        if resume_id:
+            cursor.execute('''
+                SELECT role, content, created_at
+                FROM chat_messages
+                WHERE user_id = ? AND resume_id = ?
+                ORDER BY created_at ASC
+            ''', (user_id, resume_id))
+        else:
+            cursor.execute('''
+                SELECT role, content, created_at
+                FROM chat_messages
+                WHERE user_id = ? AND resume_id IS NULL
+                ORDER BY created_at ASC
+            ''', (user_id,))
+            
+        messages = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        return messages
+    except Exception as e:
+        print(f"Error getting chat history: {e}")
+        return []
     return history

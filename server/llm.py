@@ -57,23 +57,22 @@ def analyze_resume_ats(sections, job_description):
             context += f"### {title.upper()}\n{content}\n\n"
 
     prompt = f"""
-    You are an expert ATS system. Analyze the following structured resume sections against the job description.
+    You are an expert ATS system. Your goal is to analyze the resume against the provided job description with high precision.
     Return ONLY valid JSON.
     
     {{
-    "summary_critique": "Brief overview of alignment between resume and JD",
+    "summary_critique": "A professional analysis of how well the candidate matches the JD. If the JD is invalid/gibberish, state that no analysis could be performed.",
     "advanced_enhancements": [
-        "Actionable suggestion 1",
-        "Actionable suggestion 2",
-        "Actionable suggestion 3"
+        "Specifically matched suggestion 1",
+        "Specifically matched suggestion 2"
     ]
     }}
     
-    Rules for Advanced Enhancements:
-    - Must be actionable (e.g., 'Add metrics to project X' instead of 'Improve projects').
-    - Minimum 3-5 suggestions.
-    - Focus on increasing the ATS score.
-    - Focus on fixing missing skills and weak section descriptions.
+    STRICT RULES:
+    1. If the Job Description contains gibberish, meaningless text, or lacks clear professional requirements, return an empty list for "advanced_enhancements".
+    2. Do NOT hallucinate skills or suggest common technologies (like Python/SQL) unless they are explicitly required by the JD or missing from the resume based on the JD.
+    3. Suggest enhancements ONLY if they directly increase the match for the SPECIFIC JD provided.
+    4. If the JD is empty or invalid, return "summary_critique": "The provided job description is invalid or too short for analysis."
     
     Resume Context:
     {context[:5000]}

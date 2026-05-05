@@ -15,7 +15,8 @@ import { useAuth } from './context/AuthContext';
 import { useTheme } from './context/ThemeContext';
 import LoginPage from './components/LoginPage';
 import SignupPage from './components/SignupPage';
-import { Layers, AlertCircle, Sparkles, User, MessageSquare, History, Columns, Search, LogOut, TrendingUp, FolderOpen, Sun, Moon } from 'lucide-react';
+import { Layers, AlertCircle, Sparkles, User, MessageSquare, History, Columns, Search, LogOut, TrendingUp, FolderOpen, Sun, Moon, Bell, Command, Settings, CreditCard, ChevronDown, Menu, X, Briefcase, Target, Zap, Clock } from 'lucide-react';
+import Navbar from './components/Navbar';
 
 const ProtectedRoute = ({ children, requireRole }) => {
   const { user, token, loading } = useAuth();
@@ -119,182 +120,127 @@ function App() {
         return results ? (
           <ResultCard results={results} onReset={handleReset} />
         ) : (
-          <>
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-              className="text-center mb-10 max-w-2xl mx-auto"
-            >
-              {/* <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-widest mb-6 shadow-sm">
-                <Sparkles className="w-3 h-3 text-blue-500" />
-                Enterprise Grade Analysis
-              </div> */}
+          <div className="max-w-[1800px] mx-auto w-full px-6 lg:px-12 py-6 sm:py-12">
+            {/* SaaS Dashboard Header */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-6">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-2 w-2 rounded-full bg-accent-500 animate-pulse" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">System Live</span>
+                </div>
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 dark:text-white tracking-tight leading-tight">
+                  Welcome back, <br className="sm:hidden"/> {user?.name?.split(' ')[0] || 'Member'}
+                </h1>
+                <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-base font-medium max-w-lg">
+                  Analyze and optimize your talent acquisition pipeline with AI.
+                </p>
+              </div>
               
-              <h1 className="text-4xl sm:text-6xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-6 leading-[1.1]">
-                AI-Powered <br className="hidden sm:block"/> Candidate Intelligence
-              </h1>
-              <p className="text-slate-500 dark:text-slate-400 text-base sm:text-md leading-relaxed max-w-xl mx-auto font-medium">
-                Experience a high-precision analysis engine designed to match talent with opportunity using deep learning. Precise, persistent, and private.
-              </p>
-            </motion.div>
-            <UploadForm onUpload={handleUpload} isLoading={loading} />
-          </>
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                <button className="w-full sm:w-auto px-6 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+                  Export Reports
+                </button>
+                <button className="w-full sm:w-auto px-6 py-2.5 bg-slate-900 dark:bg-accent-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-accent-500/20 hover:scale-[1.02] active:scale-95 transition-all">
+                  New Campaign
+                </button>
+              </div>
+            </div>
+
+            {/* SaaS Metrics Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
+              {[
+                { label: 'Candidates Scanned', value: '1,284', change: '+12%', icon: User, color: 'blue' },
+                { label: 'Smart Matches', value: '439', change: '+5.4%', icon: Target, color: 'emerald' },
+                { label: 'Average Accuracy', value: '94.2%', change: '+1.2%', icon: Zap, color: 'amber' },
+                { label: 'Processing Time', value: '1.4s', change: '-0.2s', icon: Clock, color: 'purple' },
+              ].map((stat, i) => (
+                <motion.div 
+                  key={i}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/50 p-5 sm:p-6 rounded-2xl sm:rounded-[24px] shadow-sm hover:shadow-md transition-all group"
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div className={`p-2.5 rounded-xl bg-blue-500/10 text-blue-500 dark:bg-accent-500/10 dark:text-accent-500 group-hover:scale-110 transition-transform`}>
+                      <stat.icon className="w-5 h-5" />
+                    </div>
+                    <span className={`text-[10px] font-bold px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400`}>
+                      {stat.change}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">{stat.label}</p>
+                    <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{stat.value}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Main Action Area */}
+            <div className="w-full">
+              <UploadForm onUpload={handleUpload} isLoading={loading} />
+            </div>
+          </div>
         );
     }
   };
 
   return (
-    <div className="h-screen selection:bg-accent-500/30 selection:text-slate-900 dark:selection:text-slate-100 flex flex-col bg-slate-50/50 dark:bg-slate-950 w-full overflow-hidden theme-transition">
-      {/* Ultra-clean Navbar */}
-      <nav className="sticky top-0 z-50 glass dark:glass-dark border-b border-slate-200/50 dark:border-slate-800/50 w-full">
-        <div className="w-full px-6 lg:px-12 h-16 flex justify-between items-center">
-          <div className="flex items-center space-x-8">
-            <div className="flex items-center space-x-2.5 cursor-pointer" onClick={() => handleTabClick('analyze')}>
-              <div className="bg-slate-900 dark:bg-accent-600 p-1.5 rounded-md shadow-subtle">
-                <Layers className="w-4 h-4 text-slate-50" />
-              </div>
-              <span className="text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">CareerForge</span>
-            </div>
-
-            {/* Navigation Tabs (Only if logged in) */}
-            {user && (
-              <div className="hidden md:flex items-center space-x-1">
-                {[
-                  { id: 'analyze', label: 'Dashboard', icon: Search },
-                  { id: 'chat', label: 'AI Chat', icon: MessageSquare },
-                  ...(user.role === 'candidate' ? [
-                    { id: 'abtest', label: 'Find Best Resume', icon: TrendingUp }
-                  ] : []),
-                  ...(user.role === 'hiring_manager' ? [
-                    { id: 'compare', label: 'Compare Candidates', icon: Columns }
-                  ] : []),
-                  { id: 'resumes', label: 'My Resumes', icon: FolderOpen },
-                  { id: 'history', label: 'My History', icon: History },
-                ].map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => handleTabClick(tab.id)}
-                    className={`flex items-center space-x-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      activeTab === tab.id && location.pathname === '/'
-                      ? 'bg-slate-900 dark:bg-accent-600 text-white shadow-md' 
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/50'
-                    }`}
-                  >
-                    <tab.icon className="w-3.5 h-3.5" />
-                    <span>{tab.label}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center space-x-4">
-            {/* Theme Toggle */}
-            <button 
-              onClick={toggleTheme}
-              className="p-2 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-all border border-slate-200 dark:border-slate-700"
-              title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
-            >
-              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
-
-            {user ? (
-              <div className="flex items-center space-x-3 pl-4 border-l border-slate-200 dark:border-slate-800">
-                <div className="flex flex-col items-end mr-1">
-                  <span className="text-[10px] font-bold text-slate-500 dark:text-slate-500 uppercase tracking-widest leading-none mb-1">
-                    {user.role === 'hiring_manager' ? 'Hiring Manager' : 'Candidate'}
-                  </span>
-                  <span className="text-xs font-bold text-slate-900 dark:text-slate-100">{user.name || 'Account'}</span>
-                </div>
-                <button 
-                  onClick={logout}
-                  className="p-2 text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
-                  title="Sign Out"
-                >
-                  <LogOut className="w-5 h-5" />
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center space-x-1 pl-4 border-l border-slate-200 dark:border-slate-800">
-                <button 
-                  onClick={() => navigate('/login')} 
-                  className={`px-4 py-2 text-xs font-bold transition-all rounded-xl ${
-                    location.pathname === '/login' 
-                    ? 'bg-slate-900 dark:bg-accent-600 text-white shadow-subtle' 
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/50 dark:hover:bg-slate-800/50'
-                  }`}
-                >
-                  Sign In
-                </button>
-                <button 
-                  onClick={() => navigate('/signup')} 
-                  className={`px-4 py-2 text-xs font-bold transition-all rounded-xl ${
-                    location.pathname === '/signup' 
-                    ? 'bg-slate-900 dark:bg-accent-600 text-white shadow-subtle' 
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/50 dark:hover:bg-slate-800/50'
-                  }`}
-                >
-                  Sign Up
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </nav>
+    <div className={`${theme} flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 w-full overflow-x-hidden theme-transition font-sans ${activeTab === 'chat' ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
+      
+      {/* Premium Modular Navbar */}
+      <Navbar 
+        activeTab={activeTab} 
+        onTabClick={handleTabClick} 
+        user={user} 
+        logout={logout}
+      />
 
       {/* Main Container */}
-      <main className={`flex-grow flex flex-col relative z-10 w-full min-h-0 ${activeTab === 'chat' ? 'overflow-hidden pb-0 px-0 pt-0' : 'overflow-y-auto pb-8 px-6 lg:px-12 pt-4'}`}>
+      <main className={`flex-grow flex flex-col relative z-10 w-full min-h-0 ${activeTab === 'chat' ? 'h-[calc(100vh-96px)] overflow-hidden pt-24 pb-0 px-0' : 'min-h-0 overflow-y-auto pt-24 pb-8 px-6 lg:px-12'}`}>
         
-        {/* Global Error */}
+        {/* Global Error Notification */}
         <AnimatePresence>
           {error && (
             <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-2xl mx-auto mb-8 flex items-center justify-between bg-red-500/10 border border-red-500/20 p-4 rounded-xl text-red-500 backdrop-blur-sm shadow-subtle"
+              initial={{ opacity: 0, y: -100 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -100 }}
+              className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] w-full max-w-md px-4"
             >
-              <div className="flex items-center space-x-3">
-                <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
-                <span className="text-sm font-medium">{error}</span>
+              <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-red-200 dark:border-red-500/20 flex items-center gap-4 shadow-[0_20px_50px_-12px_rgba(239,68,68,0.2)] dark:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+                <div className="w-10 h-10 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center flex-shrink-0">
+                  <AlertCircle className="w-6 h-6 text-red-500" />
+                </div>
+                <div className="flex-grow">
+                  <h3 className="text-sm font-black text-red-600 dark:text-red-400 uppercase tracking-wider mb-0.5">Analysis Error</h3>
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-300 leading-tight">{error}</p>
+                </div>
+                <button 
+                  onClick={() => setError(null)} 
+                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all group active:scale-90"
+                  aria-label="Close error"
+                >
+                  <X className="w-5 h-5 text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100" />
+                </button>
               </div>
-              <button onClick={() => setError(null)} className="p-1 hover:bg-red-500/10 rounded-md transition-colors text-red-500 font-bold text-lg leading-none">
-                &times;
-              </button>
             </motion.div>
           )}
         </AnimatePresence>
 
-        <div className="w-full">
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
-            <Route path="/" element={
-              <ProtectedRoute>
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={activeTab + (loading ? '-loading' : '')}
-                    initial={{ opacity: 0, x: 5 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -5 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    {renderDashboard()}
-                  </motion.div>
-                </AnimatePresence>
-              </ProtectedRoute>
-            } />
-            <Route path="/analysis" element={<ProtectedRoute><AnalysisPage /></ProtectedRoute>} />
-            <Route path="/analysis/:id" element={<ProtectedRoute><AnalysisPage /></ProtectedRoute>} />
-          </Routes>
-        </div>
-
-        {/* Minimal Footer - Moved inside scrollable area
-        {!loading && activeTab !== 'chat' && (
-          <footer className="py-6 mt-auto text-center text-xs text-slate-500 dark:text-slate-500 border-t border-slate-200/50 dark:border-slate-800/50">
-            <p>© 2026 CareerForge. Building better professional tools.</p>
-          </footer>
-        )} */}
+        {/* Dynamic Page Content */}
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/analysis/:id" element={<AnalysisPage />} />
+          <Route path="/" element={renderDashboard()} />
+        </Routes>
       </main>
     </div>
   );
-}
+};
+
 
 export default App;
+

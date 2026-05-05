@@ -197,6 +197,11 @@ def global_chat():
     # 2. Get response from LLM
     answer = llm.get_global_chat_response(context, question)
     
+    # 3. Save to DB [NEW]
+    user_id = request.user['user_id']
+    db.save_chat_message(user_id, 'user', question, None) # Global context
+    db.save_chat_message(user_id, 'assistant', answer, None)
+    
     return jsonify({
         "answer": answer,
         "context_used": context[:300] + "..." if context else ""
@@ -222,6 +227,11 @@ def chat():
     context = rag.query_index(resume_id, question)
     answer = llm.get_chat_response(context, question)
     
+    # 3. Save to DB [NEW]
+    user_id = request.user['user_id']
+    db.save_chat_message(user_id, 'user', question, resume_id)
+    db.save_chat_message(user_id, 'assistant', answer, resume_id)
+    
     return jsonify({
         "answer": answer,
         "resume_id": resume_id
@@ -241,6 +251,11 @@ def chat_with_resume(resume_id):
     
     # 2. Get response from LLM
     answer = llm.get_chat_response(context, question)
+    
+    # 3. Save to DB [NEW]
+    user_id = request.user['user_id']
+    db.save_chat_message(user_id, 'user', question, resume_id)
+    db.save_chat_message(user_id, 'assistant', answer, resume_id)
     
     return jsonify({
         "answer": answer,
@@ -262,7 +277,7 @@ def get_resume_analysis(resume_id):
     user_id = request.user['user_id']
     # Get the latest analysis for this resume (ensuring user owns it)
     cursor.execute('''
-        SELECT a.detailed_json, r.filename, a.ats_score, r.summary, r.skills, r.experience, r.education, r.projects, r.achievements, r.other_sections
+        SELECT a.detailed_json, a.job_description, r.filename, a.ats_score, r.summary, r.skills, r.experience, r.education, r.projects, r.achievements, r.other_sections
         FROM analysis_results a
         JOIN resumes r ON a.resume_id = r.id
         WHERE r.id = ? AND r.user_id = ?
@@ -280,6 +295,7 @@ def get_resume_analysis(resume_id):
     return jsonify({
         "resume_id": resume_id,
         "filename": res['filename'],
+        "job_description": res['job_description'],
         "sections": {
             "summary": res['summary'],
             "skills": res['skills'],
@@ -342,8 +358,8 @@ def compare_resumes():
     resume_ids = data.get('resume_ids', [])
     job_description = data.get('job_description', '')
     
-    if not job_description:
-        return jsonify({"error": "Job description is required for context-aware comparison"}), 400
+    if not job_description or utils.is_gibberish(job_description):
+        return jsonify({"error": "A valid, non-gibberish job description is required for accurate comparison"}), 400
         
     if not resume_ids or len(resume_ids) < 2:
         return jsonify({"error": "At least two resume_ids are required for comparison"}), 400
@@ -368,8 +384,8 @@ def compare_my_resumes():
     resume_ids = data.get('resume_ids', [])
     job_description = data.get('job_description', '')
     
-    if not job_description:
-        return jsonify({"error": "Job description is required"}), 400
+    if not job_description or utils.is_gibberish(job_description):
+        return jsonify({"error": "A valid job description is required"}), 400
         
     if not resume_ids or len(resume_ids) < 2:
         return jsonify({"error": "At least two resumes are required for A/B testing"}), 400
@@ -400,6 +416,28 @@ def get_analysis_history():
     history = db.get_history(user_id)
     return jsonify(history)
 
+@app.route('/chat/history', methods=['GET'])
+@auth_required
+def get_chat_history():
+    user_id = request.user['user_id']
+    resume_id = request.args.get('resume_id')
+    if resume_id == 'global': resume_id = None
+    
+    history = db.get_chat_history(user_id, resume_id)
+    return jsonify(history)
+
+@app.route('/validate-jd', methods=['POST'])
+@auth_required
+def validate_jd():
+    data = request.json
+    jd = data.get('job_description', '')
+    if not jd or utils.is_gibberish(jd):
+        return jsonify({
+            "valid": False, 
+            "error": "The provided job description appears to be invalid or too short. Please provide more detail (minimum 10 words)."
+        }), 400
+    return jsonify({"valid": True})
+
 @app.route('/analyze-advanced', methods=['POST'])
 @auth_required
 def analyze_advanced():
@@ -408,6 +446,11 @@ def analyze_advanced():
     
     file = request.files['resume']
     job_description = request.form.get('job_description', '')
+    
+    # Pre-validation
+    if not job_description or utils.is_gibberish(job_description):
+        return jsonify({"error": "The provided job description appears to be invalid or too short. Please provide a real job description."}), 400
+        
     persist = request.form.get('persist', 'true').lower() == 'true'
     
     # 1. Standard Upload & Indexing
