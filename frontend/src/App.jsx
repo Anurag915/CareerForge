@@ -13,12 +13,21 @@ import AnalysisPage from './components/AnalysisPage';
 import ABTestingView from './components/ABTestingView';
 import MyResumesView from './components/MyResumesView';
 import JobsView from './components/JobsView';
+import LandingPage from './components/LandingPage';
 import { useAuth } from './context/AuthContext';
 import { useTheme } from './context/ThemeContext';
 import LoginPage from './components/LoginPage';
 import SignupPage from './components/SignupPage';
 import { Layers, AlertCircle, Sparkles, User, MessageSquare, History, Columns, Search, LogOut, TrendingUp, FolderOpen, Sun, Moon, Bell, Command, Settings, CreditCard, ChevronDown, Menu, X, Briefcase, Target, Zap, Clock } from 'lucide-react';
 import Navbar from './components/Navbar';
+
+const parseDateTime = (str) => {
+  if (!str) return new Date();
+  if (!str.includes('Z') && !str.includes('+')) {
+    return new Date(str.replace(' ', 'T') + 'Z');
+  }
+  return new Date(str);
+};
 
 const ProtectedRoute = ({ children, requireRole }) => {
   const { user, token, loading } = useAuth();
@@ -54,7 +63,7 @@ function App() {
   const [error, setError] = useState(null);
   const [processingQueue, setProcessingQueue] = useState([]);
   
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
@@ -81,13 +90,18 @@ function App() {
           });
           
           const job = res.data;
-          if (job.status === 'processing' || job.status === 'pending') {
+          const createdTime = parseDateTime(job.created_at);
+          const isStale = (new Date() - createdTime) > 60 * 60 * 1000; // 1 hour threshold
+          
+          if (isStale) {
+            removeJobFromPersistence(job.id);
+          } else if (job.status !== 'completed' && job.status !== 'failed') {
             recoveredTasks.push({
               id: job.id,
               name: `Recovered Task (${job.id.substr(0,4)})`, // Or store names in LS
               status: job.status,
               progress: job.progress,
-              message: 'Resuming tracking...'
+              message: job.message || 'Resuming tracking...'
             });
 
             // Re-attach socket listener
@@ -149,7 +163,7 @@ function App() {
         const newTask = { 
           id: jobId, 
           name: file.name, 
-          status: 'processing', 
+          status: 'Upload', 
           progress: 10, 
           message: 'Initializing...' 
         };
@@ -173,12 +187,7 @@ function App() {
       });
 
       await Promise.all(uploadPromises);
-      
-      // Navigate to history but keep the background processing visible in Navbar
-      setTimeout(() => {
-        setLoading(false);
-        handleTabClick('history');
-      }, 800);
+      setLoading(false);
 
     } catch (err) {
       console.error('Upload error:', err);
@@ -303,6 +312,16 @@ function App() {
         );
     }
   };
+
+  if (!token) {
+    return (
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+        <Route path="*" element={<LandingPage />} />
+      </Routes>
+    );
+  }
 
   return (
     <div className={`${theme} flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 w-full overflow-x-hidden theme-transition font-sans ${activeTab === 'chat' ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>

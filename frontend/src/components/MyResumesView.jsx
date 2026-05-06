@@ -3,6 +3,14 @@ import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, UploadCloud, Trash2, Search, Plus, Calendar, ShieldCheck } from 'lucide-react';
 
+const parseDateTime = (str) => {
+    if (!str) return new Date();
+    if (!str.includes('Z') && !str.includes('+')) {
+        return new Date(str.replace(' ', 'T') + 'Z');
+    }
+    return new Date(str);
+};
+
 const MyResumesView = () => {
     const [resumes, setResumes] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -118,7 +126,7 @@ const MyResumesView = () => {
                                         <h4 className="font-bold text-slate-900 dark:text-slate-100 text-sm truncate mb-1">{r.filename}</h4>
                                         <div className="flex items-center text-[10px] text-slate-400 dark:text-slate-500 font-medium">
                                             <Calendar className="w-3 h-3 mr-1" />
-                                            {new Date(r.created_at).toLocaleDateString()}
+                                            {parseDateTime(r.created_at).toLocaleDateString()}
                                         </div>
                                     </div>
 

@@ -3,6 +3,14 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import { Activity, Clock, CheckCircle2, AlertCircle, ChevronRight, Loader2, RefreshCw } from 'lucide-react';
 
+const parseDateTime = (str) => {
+    if (!str) return new Date();
+    if (!str.includes('Z') && !str.includes('+')) {
+        return new Date(str.replace(' ', 'T') + 'Z');
+    }
+    return new Date(str);
+};
+
 const JobsView = ({ onViewResult }) => {
     const [jobs, setJobs] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -28,8 +36,8 @@ const JobsView = ({ onViewResult }) => {
         switch (status) {
             case 'completed': return <CheckCircle2 className="w-5 h-5 text-emerald-500" />;
             case 'failed': return <AlertCircle className="w-5 h-5 text-red-500" />;
-            case 'processing': return <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />;
-            default: return <Clock className="w-5 h-5 text-slate-400" />;
+            case 'pending': return <Clock className="w-5 h-5 text-slate-400" />;
+            default: return <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />;
         }
     };
 
@@ -40,8 +48,13 @@ const JobsView = ({ onViewResult }) => {
         </div>
     );
 
+    const totalJobs = jobs.length;
+    const completedJobs = jobs.filter(j => j.status === 'completed').length;
+    const activeJobs = jobs.filter(j => j.status !== 'completed' && j.status !== 'failed').length;
+    const failedJobs = jobs.filter(j => j.status === 'failed').length;
+
     return (
-        <div className="w-full space-y-8 max-w-5xl mx-auto">
+        <div className="w-full px-8 space-y-8">
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
@@ -56,6 +69,32 @@ const JobsView = ({ onViewResult }) => {
                 >
                     <RefreshCw className="w-5 h-5 text-slate-400" />
                 </button>
+            </div>
+
+            {/* Metrics Dashboard Row */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                {[
+                    { label: 'Total Tasks', value: totalJobs, color: 'text-slate-900 dark:text-white', bg: 'bg-slate-50 dark:bg-slate-800/20', icon: Activity, iconColor: 'text-blue-500' },
+                    { label: 'Completed', value: completedJobs, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50/50 dark:bg-emerald-500/5', icon: CheckCircle2, iconColor: 'text-emerald-500' },
+                    { label: 'In Progress', value: activeJobs, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50/50 dark:bg-blue-500/5', icon: Loader2, iconColor: 'text-blue-500', spin: activeJobs > 0 },
+                    { label: 'Failed', value: failedJobs, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50/50 dark:bg-red-500/5', icon: AlertCircle, iconColor: 'text-red-500' }
+                ].map((card, i) => (
+                    <motion.div
+                        key={card.label}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.05 }}
+                        className="p-5 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md flex items-center justify-between group hover:shadow-md transition-all duration-300"
+                    >
+                        <div>
+                            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{card.label}</p>
+                            <p className={`text-2xl font-black mt-1 ${card.color}`}>{card.value}</p>
+                        </div>
+                        <div className={`p-3 rounded-xl ${card.bg}`}>
+                            <card.icon className={`w-5 h-5 ${card.iconColor} ${card.spin ? 'animate-spin' : ''}`} />
+                        </div>
+                    </motion.div>
+                ))}
             </div>
 
             <div className="grid gap-4">
@@ -94,17 +133,21 @@ const JobsView = ({ onViewResult }) => {
                                                 job.status === 'failed' ? 'text-red-500' :
                                                 'text-blue-500'
                                             }`}>
-                                                {job.status} {job.status === 'processing' && `(${job.progress}%)`}
+                                                {job.status === 'completed' ? 'Completed' :
+                                                 job.status === 'failed' ? 'Failed' :
+                                                 job.status === 'Upload' ? 'Uploading resume...' :
+                                                 job.status === 'processing' ? 'Analyzing resume...' :
+                                                 job.status} {job.status !== 'completed' && job.status !== 'failed' && `(${job.progress}%)`}
                                             </span>
                                             <span className="w-1 h-1 bg-slate-200 dark:bg-slate-800 rounded-full" />
                                             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                                                Created: {new Date(job.created_at).toLocaleTimeString()}
+                                                Created: {parseDateTime(job.created_at).toLocaleTimeString()}
                                             </span>
                                             {job.started_at && (
                                                 <>
                                                     <span className="w-1 h-1 bg-slate-200 dark:bg-slate-800 rounded-full" />
                                                     <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                                                        Started: {new Date(job.started_at).toLocaleTimeString()}
+                                                        Started: {parseDateTime(job.started_at).toLocaleTimeString()}
                                                     </span>
                                                 </>
                                             )}
@@ -112,8 +155,8 @@ const JobsView = ({ onViewResult }) => {
                                                 <>
                                                     <span className="w-1 h-1 bg-slate-200 dark:bg-slate-800 rounded-full" />
                                                     <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider">
-                                                        Done: {new Date(job.completed_at).toLocaleTimeString()} 
-                                                        ({((new Date(job.completed_at) - new Date(job.started_at || job.created_at))/1000).toFixed(1)}s)
+                                                        Done: {parseDateTime(job.completed_at).toLocaleTimeString()} 
+                                                        ({((parseDateTime(job.completed_at) - parseDateTime(job.started_at || job.created_at))/1000).toFixed(1)}s)
                                                     </span>
                                                 </>
                                             )}
@@ -132,7 +175,7 @@ const JobsView = ({ onViewResult }) => {
                                 )}
                             </div>
                             
-                            {job.status === 'processing' && (
+                            {job.status !== 'completed' && job.status !== 'failed' && (
                                 <div className="mt-4 w-full h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                                     <motion.div 
                                         className="h-full bg-blue-500"

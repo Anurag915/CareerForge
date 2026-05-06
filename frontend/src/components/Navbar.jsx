@@ -11,8 +11,16 @@ import { io } from 'socket.io-client';
 
 import { useTheme } from '../context/ThemeContext';
 
+const parseDateTime = (str) => {
+    if (!str) return new Date();
+    if (!str.includes('Z') && !str.includes('+')) {
+        return new Date(str.replace(' ', 'T') + 'Z');
+    }
+    return new Date(str);
+};
+
 const Navbar = ({ activeTab, onTabClick, user, logout, processingQueue = [] }) => {
-    const activeTasks = processingQueue.filter(t => t.status === 'processing');
+    const activeTasks = processingQueue.filter(t => t.status !== 'completed' && t.status !== 'failed');
     const hasActiveTasks = activeTasks.length > 0;
     const { theme, toggleTheme } = useTheme();
     const [isScrolled, setIsScrolled] = useState(false);
@@ -174,45 +182,7 @@ const Navbar = ({ activeTab, onTabClick, user, logout, processingQueue = [] }) =
                     {/* Desktop Extras */}
                     <div className="hidden md:flex items-center space-x-4 mr-4 border-r border-slate-200 dark:border-slate-800 pr-4">
                         <div className="flex items-center space-x-2 md:space-x-4">
-                            {/* Background Processing Indicator (Phase 6 Premium UX) */}
-                            <AnimatePresence>
-                                {hasActiveTasks && (
-                                    <motion.div 
-                                        initial={{ opacity: 0, x: 20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, scale: 0.8 }}
-                                        className="hidden lg:flex flex-col items-end gap-1.5 px-4 py-2 rounded-2xl bg-blue-500/5 border border-blue-500/20 mr-2 min-w-[200px]"
-                                    >
-                                        <div className="flex items-center justify-between w-full">
-                                            <div className="flex items-center gap-2">
-                                                <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin" />
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400">
-                                                    {activeTasks.length === 1 ? 'Processing Resume' : `Analyzing ${activeTasks.length} Resumes`}
-                                                </span>
-                                            </div>
-                                            <span className="text-[10px] font-black text-blue-500">
-                                                {Math.round(activeTasks.reduce((acc, t) => acc + (t.progress || 0), 0) / activeTasks.length)}%
-                                            </span>
-                                        </div>
-                                        
-                                        {/* Progress Bar */}
-                                        <div className="w-full h-1 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                                            <motion.div 
-                                                className="h-full bg-blue-500"
-                                                initial={{ width: 0 }}
-                                                animate={{ width: `${Math.round(activeTasks.reduce((acc, t) => acc + (t.progress || 0), 0) / activeTasks.length)}%` }}
-                                            />
-                                        </div>
 
-                                        {/* Step Indicator */}
-                                        <div className="flex items-center gap-1.5">
-                                            <span className="text-[8px] font-bold text-slate-500 dark:text-slate-400 truncate max-w-[150px]">
-                                                {activeTasks[0].message || 'Initializing...'}
-                                            </span>
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
 
                             <div className="flex items-center space-x-1 sm:space-x-2 bg-slate-100/50 dark:bg-slate-800/50 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 relative">
                                 <button 
@@ -237,7 +207,7 @@ const Navbar = ({ activeTab, onTabClick, user, logout, processingQueue = [] }) =
                                             initial={{ opacity: 0, y: 10, scale: 0.95 }}
                                             animate={{ opacity: 1, y: 0, scale: 1 }}
                                             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                            className="absolute top-full right-0 mt-3 w-80 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl z-[500] overflow-hidden"
+                                            className="absolute right-0 top-full mt-3 w-[calc(100vw-32px)] sm:w-[350px] max-w-[350px] bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl z-[9999] overflow-hidden"
                                         >
                                             <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
                                                 <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">Notifications</h3>
@@ -245,26 +215,26 @@ const Navbar = ({ activeTab, onTabClick, user, logout, processingQueue = [] }) =
                                                     {unreadCount} New
                                                 </span>
                                             </div>
-                                            <div className="max-h-[350px] overflow-y-auto">
+                                            <div className="max-h-[250px] overflow-y-auto">
                                                 {notifications.length === 0 ? (
                                                     <div className="p-8 text-center">
                                                         <Bell className="w-8 h-8 text-slate-200 dark:text-slate-700 mx-auto mb-3" />
                                                         <p className="text-xs text-slate-500 font-medium">Your inbox is clear</p>
                                                     </div>
                                                 ) : (
-                                                    notifications.map(n => (
+                                                    notifications.slice(0, 5).map(n => (
                                                         <div 
                                                             key={n.id} 
                                                             className={`p-4 border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors relative group ${!n.is_read ? 'bg-blue-50/30 dark:bg-blue-500/5' : ''}`}
                                                             onClick={() => !n.is_read && handleMarkAsRead(n.id)}
                                                         >
                                                             {!n.is_read && <div className="absolute left-2 top-1/2 -translate-y-1/2 w-1 h-1 bg-blue-500 rounded-full" />}
-                                                            <p className="text-xs font-medium text-slate-700 dark:text-slate-300 leading-relaxed pr-6">
+                                                            <p className="text-xs font-medium text-slate-700 dark:text-slate-300 leading-relaxed pr-6 break-words">
                                                                 {n.message}
                                                             </p>
                                                             <div className="flex items-center justify-between mt-2">
                                                                 <span className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">
-                                                                    {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                    {parseDateTime(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                                 </span>
                                                                 {n.job_id && (
                                                                     <button 

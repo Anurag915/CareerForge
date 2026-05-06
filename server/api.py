@@ -128,6 +128,8 @@ def login():
     # Generate JWT
     payload = {
         "user_id": user['id'],
+        "name": user['name'],
+        "email": user['email'],
         "role": user['role'],
         "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24)
     }
@@ -138,6 +140,7 @@ def login():
         "user": {
             "id": user['id'],
             "name": user['name'],
+            "email": user['email'],
             "role": user['role']
         }
     })

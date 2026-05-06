@@ -19,6 +19,8 @@ export const AuthProvider = ({ children }) => {
                 } else {
                     setUser({
                         id: decoded.user_id,
+                        name: decoded.name,
+                        email: decoded.email,
                         role: decoded.role
                     });
                     // Set default auth header

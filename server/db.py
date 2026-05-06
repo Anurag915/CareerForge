@@ -167,12 +167,14 @@ def get_resume(resume_id, user_id):
     return dict(row) if row else None
 
 def save_analysis(resume_id, user_id, job_description, ats_score, detailed_json):
+    import datetime
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+    now = datetime.datetime.utcnow().isoformat() + 'Z'
     cursor.execute('''
-        INSERT INTO analysis_results (resume_id, user_id, job_description, ats_score, detailed_json)
-        VALUES (?, ?, ?, ?, ?)
-    ''', (resume_id, user_id, job_description, ats_score, json.dumps(detailed_json)))
+        INSERT INTO analysis_results (resume_id, user_id, job_description, ats_score, detailed_json, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (resume_id, user_id, job_description, ats_score, json.dumps(detailed_json), now))
     conn.commit()
     conn.close()
 
@@ -238,24 +240,31 @@ def get_chat_history(user_id, resume_id=None):
 
 def create_job(user_id, job_type):
     import uuid
+    import datetime
     job_id = str(uuid.uuid4())
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+    now = datetime.datetime.utcnow().isoformat() + 'Z'
     cursor.execute('''
-        INSERT INTO jobs (id, user_id, type, status)
-        VALUES (?, ?, ?, 'pending')
-    ''', (job_id, user_id, job_type))
+        INSERT INTO jobs (id, user_id, type, status, created_at)
+        VALUES (?, ?, ?, 'pending', ?)
+    ''', (job_id, user_id, job_type, now))
     conn.commit()
     conn.close()
     return job_id
 
 def update_job_status(job_id, status, progress=0):
+    import datetime
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    if status == 'processing':
+    now = datetime.datetime.utcnow().isoformat() + 'Z'
+    if status not in ['completed', 'failed', 'pending']:
         cursor.execute('''
-            UPDATE jobs SET status = ?, progress = ?, started_at = CURRENT_TIMESTAMP 
+            UPDATE jobs SET status = ?, progress = ?, started_at = ? 
             WHERE id = ? AND started_at IS NULL
+        ''', (status, progress, now, job_id))
+        cursor.execute('''
+            UPDATE jobs SET status = ?, progress = ? WHERE id = ?
         ''', (status, progress, job_id))
     else:
         cursor.execute('''
@@ -265,11 +274,13 @@ def update_job_status(job_id, status, progress=0):
     conn.close()
 
 def update_job_result(job_id, result_dict):
+    import datetime
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+    now = datetime.datetime.utcnow().isoformat() + 'Z'
     cursor.execute('''
-        UPDATE jobs SET status = 'completed', progress = 100, result = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ?
-    ''', (json.dumps(result_dict), job_id))
+        UPDATE jobs SET status = 'completed', progress = 100, result = ?, completed_at = ? WHERE id = ?
+    ''', (json.dumps(result_dict), now, job_id))
     conn.commit()
     conn.close()
 
@@ -290,12 +301,16 @@ def get_job(job_id):
 # --- NOTIFICATION UTILS [PHASE 8] ---
 
 def create_notification(user_id, job_id, message):
+    import uuid
+    import datetime
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    import uuid
     notif_id = str(uuid.uuid4())
-    cursor.execute('INSERT INTO notifications (id, user_id, job_id, message) VALUES (?, ?, ?, ?)',
-                   (notif_id, user_id, job_id, message))
+    now = datetime.datetime.utcnow().isoformat() + 'Z'
+    cursor.execute('''
+        INSERT INTO notifications (id, user_id, job_id, message, created_at) 
+        VALUES (?, ?, ?, ?, ?)
+    ''', (notif_id, user_id, job_id, message, now))
     conn.commit()
     conn.close()
     return notif_id

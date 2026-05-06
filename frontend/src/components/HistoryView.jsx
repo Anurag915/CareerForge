@@ -4,6 +4,14 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import { History, FileText, Calendar, ChevronRight, Activity } from 'lucide-react';
 
+const parseDateTime = (str) => {
+    if (!str) return new Date();
+    if (!str.includes('Z') && !str.includes('+')) {
+        return new Date(str.replace(' ', 'T') + 'Z');
+    }
+    return new Date(str);
+};
+
 const HistoryView = () => {
     const navigate = useNavigate();
     const [history, setHistory] = useState([]);
@@ -74,7 +82,7 @@ const HistoryView = () => {
                                         <div className="flex items-center space-x-3 mt-1.5">
                                             <div className="flex items-center text-[11px] text-slate-400 dark:text-slate-500 font-medium">
                                                 <Calendar className="w-3 h-3 mr-1" />
-                                                {new Date(item.created_at).toLocaleDateString()} {new Date(item.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                {parseDateTime(item.created_at).toLocaleDateString()} {parseDateTime(item.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                                             </div>
                                             <span className="w-1 h-1 bg-slate-200 dark:bg-slate-700 rounded-full"></span>
                                             <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium truncate max-w-[200px]">

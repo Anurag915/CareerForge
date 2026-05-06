@@ -27,7 +27,7 @@ const formatFileSize = (bytes) => {
 };
 
 const UploadForm = ({ onUpload, isLoading, processingQueue = [] }) => {
-  const isProcessing = processingQueue.some(t => t.status === 'processing');
+  const isProcessing = processingQueue.some(t => t.status !== 'completed' && t.status !== 'failed');
   const [files, setFiles] = useState([]);
   const [jobDescription, setJobDescription] = useState("");
   const [error, setError] = useState("");
@@ -420,6 +420,95 @@ const UploadForm = ({ onUpload, isLoading, processingQueue = [] }) => {
           </div>
         </form>
       </div>
+
+      {/* Real-time Processing Event Log Section [PHASE 6] */}
+      <AnimatePresence>
+        {isProcessing && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mt-8 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border border-slate-200/60 dark:border-slate-800/60 rounded-3xl p-6 sm:p-8 space-y-6 overflow-hidden animate-in fade-in zoom-in-95 duration-500"
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+                  Live Analysis Stream
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Watch AI process your professional documents in real-time.</p>
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-wider px-3 py-1 bg-blue-500/10 text-blue-500 rounded-full animate-pulse">
+                Active Queue
+              </span>
+            </div>
+
+            <div className="space-y-6">
+              {processingQueue
+                .filter(t => t.status !== 'completed' && t.status !== 'failed')
+                .map((task) => {
+                  const prog = task.progress || 10;
+                  const stepsLog = [
+                    { label: "Resume Uploaded", target: 10, check: prog >= 30, active: prog === 10 },
+                    { label: "Reading resume...", target: 30, check: prog >= 60, active: prog === 30 },
+                    { label: "Extracting skills...", target: 60, check: prog >= 80, active: prog === 60 },
+                    { label: "Matching job description", target: 80, check: task.status === 'completed' || prog >= 100, active: prog === 80 },
+                    { label: "Analysis complete", target: 100, check: task.status === 'completed', active: prog === 100 }
+                  ];
+
+                  return (
+                    <div key={task.id} className="bg-white dark:bg-slate-950 border border-slate-150 dark:border-slate-800/80 rounded-2xl p-5 space-y-4 shadow-sm theme-transition">
+                      <div className="flex items-center justify-between">
+                        <div className="truncate max-w-[70%]">
+                          <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">File Analysis</h4>
+                          <p className="text-sm font-bold text-slate-900 dark:text-white truncate mt-0.5">{task.name}</p>
+                        </div>
+                        <span className="text-xs font-black text-blue-500">{prog}%</span>
+                      </div>
+
+                      {/* Progress Bar */}
+                      <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <motion.div 
+                          className="h-full bg-blue-500"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${prog}%` }}
+                          transition={{ duration: 0.5 }}
+                        />
+                      </div>
+
+                      {/* Timeline Event List */}
+                      <div className="space-y-3 pt-2">
+                        {stepsLog.map((step, sIdx) => (
+                          <div key={sIdx} className="flex items-center justify-between text-xs font-medium">
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center justify-center w-5 h-5 shrink-0">
+                                {step.check ? (
+                                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                ) : step.active ? (
+                                  <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+                                ) : (
+                                  <div className="w-2 h-2 rounded-full bg-slate-200 dark:bg-slate-800" />
+                                )}
+                              </div>
+                              <span className={step.check ? "text-slate-500 dark:text-slate-400 line-through decoration-slate-300 dark:decoration-slate-700" : step.active ? "text-blue-500 font-bold" : "text-slate-400"}>
+                                {step.label}
+                              </span>
+                            </div>
+                            {step.active && (
+                              <span className="text-[10px] text-blue-500 font-bold uppercase tracking-widest animate-pulse">
+                                Processing
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };
