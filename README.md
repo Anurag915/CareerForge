@@ -253,27 +253,89 @@ docker-compose down
 docker-compose down -v
 ```
 
-### 5. Pulling Pre-Built Images from Docker Hub
-If you want other users to run your application directly by pulling pre-built images from a container registry (like Docker Hub) instead of compiling and building them locally, they can:
+### 5. Running Instantly with Pre-Built Images (No Source Code Needed!)
 
-1. **Pull the images**:
+For users who want to run the entire CareerForge suite instantly without downloading the source code or compiling anything locally, they can do so using pre-built Docker Hub images.
+
+#### A. Prerequisites
+1. Install [Docker & Docker Compose](https://www.docker.com/products/docker-desktop/) on your system.
+2. Have [Ollama](https://ollama.com) running locally on your host machine with `llama3` downloaded:
    ```bash
-   docker pull anuragprajapati123/careerforge-backend:latest
-   docker pull anuragprajapati123/careerforge-frontend:latest
+   ollama pull llama3
    ```
 
-2. **Update the `docker-compose.yml`**:
-   Change the `build:` property to reference the public Docker Hub image instead:
-   ```yaml
-   services:
-     backend:
-       image: anuragprajapati123/careerforge-backend:latest
-       # (keep ports, environment, volumes, extra_hosts, depends_on unchanged)
+#### B. Quick Start Steps
+1. Create an empty folder on your computer.
+2. Inside that folder, create a file named `docker-compose.yml` and paste the following content:
 
-     frontend:
-       image: anuragprajapati123/careerforge-frontend:latest
-       # (keep ports, depends_on unchanged)
+```yaml
+version: '3.8'
+
+services:
+  # 1. Message Broker
+  redis:
+    image: redis:alpine
+    container_name: careerforge-redis
+    ports:
+      - "6379:6379"
+    restart: always
+
+  # 2. Flask API Server
+  backend:
+    image: anuragprajapati123/careerforge-backend:latest
+    container_name: careerforge-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      - DEFAULT_MODEL=llama3
+      - JWT_SECRET=careerforge-super-secret-key-2026
+    volumes:
+      - backend_data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - redis
+    restart: always
+
+  # 3. Background Worker
+  celery:
+    image: anuragprajapati123/careerforge-backend:latest
+    container_name: careerforge-celery
+    command: celery -A tasks worker --loglevel=info
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      - DEFAULT_MODEL=llama3
+    volumes:
+      - backend_data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - redis
+    restart: always
+
+  # 4. React Frontend Web Server
+  frontend:
+    image: anuragprajapati123/careerforge-frontend:latest
+    container_name: careerforge-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  backend_data:
+    driver: local
+```
+
+3. Open your terminal in that folder and run:
+   ```bash
+   docker-compose up -d
    ```
+4. That's it! Access the web interface in your browser at: **`http://localhost`** (or `http://localhost:80`).
 
 ---
 
