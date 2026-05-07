@@ -1,8 +1,10 @@
 import requests
 import json
+import os
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
-DEFAULT_MODEL = "llama3" # You can change this to phi3 if preferred
+OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://localhost:11434')
+OLLAMA_URL = f"{OLLAMA_HOST}/api/generate"
+DEFAULT_MODEL = os.getenv('DEFAULT_MODEL', 'llama3')
 
 def query_ollama(prompt, format_json=True, timeout=300):
     payload = {

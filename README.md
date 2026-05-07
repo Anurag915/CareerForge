@@ -218,6 +218,65 @@ npm run dev
 
 ---
 
+## 🐳 Docker Setup Guide (Recommended)
+
+Run the entire CareerForge suite (Nginx, React, Flask, Celery, and Redis) with a single command. This configuration leverages your host machine's Ollama instance to utilize full GPU acceleration (Option A).
+
+### 1. Prerequisites
+- [Docker & Docker Compose](https://www.docker.com/products/docker-desktop/) installed and running.
+- **Ollama** running locally on your host machine (with the `llama3` model pulled: `ollama pull llama3`).
+
+### 2. Quick Start
+From the project root directory, run:
+```bash
+# Build and launch all services in the background
+docker-compose up -d --build
+```
+
+That's it! 
+- Access the **React Web UI** at `http://localhost:80` (or simply `http://localhost`).
+- The **Flask API** is exposed and accessible at `http://localhost:5000`.
+
+### 3. Key Docker Configurations
+- **Ollama GPU Acceleration**: The `docker-compose.yml` uses `host.docker.internal` to route LLM requests out of the container directly to your host machine's Ollama, utilizing your GPU for lightning-fast analysis.
+- **Data Persistence**: Databases, indexed embeddings, and files are stored inside a persistent Docker volume (`backend_data`) so they remain intact even if you destroy or update containers.
+
+### 4. Useful Commands
+```bash
+# View live logs from all services
+docker-compose logs -f
+
+# Stop and remove containers (preserving database volume)
+docker-compose down
+
+# Stop containers and wipe the database volume (clean reset)
+docker-compose down -v
+```
+
+### 5. Pulling Pre-Built Images from Docker Hub
+If you want other users to run your application directly by pulling pre-built images from a container registry (like Docker Hub) instead of compiling and building them locally, they can:
+
+1. **Pull the images**:
+   ```bash
+   docker pull anuragprajapati123/careerforge-backend:latest
+   docker pull anuragprajapati123/careerforge-frontend:latest
+   ```
+
+2. **Update the `docker-compose.yml`**:
+   Change the `build:` property to reference the public Docker Hub image instead:
+   ```yaml
+   services:
+     backend:
+       image: anuragprajapati123/careerforge-backend:latest
+       # (keep ports, environment, volumes, extra_hosts, depends_on unchanged)
+
+     frontend:
+       image: anuragprajapati123/careerforge-frontend:latest
+       # (keep ports, depends_on unchanged)
+   ```
+
+---
+
 ## 📁 Project Structure
 ```text
 Resume Analyzer/

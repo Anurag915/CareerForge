@@ -2,6 +2,7 @@ from sentence_transformers import SentenceTransformer
 import faiss
 import numpy as np
 import requests
+import os
 from utils import extract_sections, calculate_heuristic_scores, extract_rule_based_skills, chunk_text, clean_output
 from validation import validate_analyze_output, validate_advanced_output
 
@@ -11,10 +12,12 @@ model = SentenceTransformer('all-MiniLM-L6-v2')
 def query_ollama(prompt, timeout=300):
     try:
         print(f"Sending request to Ollama...")
+        ollama_host = os.getenv('OLLAMA_HOST', 'http://localhost:11434')
+        default_model = os.getenv('DEFAULT_MODEL', 'llama3')
         response = requests.post(
-            "http://localhost:11434/api/generate",
+            f"{ollama_host}/api/generate",
             json={
-                "model": "llama3",
+                "model": default_model,
                 "format": "json",
                 "prompt": prompt,
                 "stream": False

@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # 1. Message Broker for Celery Background Jobs
+  redis:
+    image: redis:alpine
+    container_name: careerforge-redis
+    ports:
+      - "6379:6379"
+    restart: always
+
+  # 2. Flask API Server (Backend)
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: careerforge-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      - DEFAULT_MODEL=llama3
+      - JWT_SECRET=careerforge-super-secret-key-2026
+    volumes:
+      - backend_data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # Resolves host's localhost inside Linux containers
+    depends_on:
+      - redis
+    restart: always
+
+  # 3. Celery Background Worker (AI & Parsing Engine)
+  celery:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: careerforge-celery
+    command: celery -A tasks worker --loglevel=info
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      - DEFAULT_MODEL=llama3
+    volumes:
+      - backend_data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - redis
+    restart: always
+
+  # 4. React Single Page Application (Frontend served by Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: careerforge-frontend
+    ports:
+      - "80:80" # Map to standard HTTP port on the host
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  backend_data:
+    driver: local

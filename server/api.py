@@ -643,4 +643,4 @@ def analyze_advanced():
 if __name__ == '__main__':
     print("Level 3 AI Resume Server Starting with WebSockets...")
     # use_reloader=False is critical on Windows with eventlet to prevent port lock
-    socketio.run(app, host='127.0.0.1', port=5000, debug=True, use_reloader=False)
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True, use_reloader=False)
