@@ -44,46 +44,169 @@
 
 ## ⚙️ Installation & Setup
 
-### Prerequisites
-- Python 3.9+
-- Node.js & npm
-- [Redis](https://redis.io/download/) (Must be running on `localhost:6379`)
-- [Ollama](https://ollama.com/) (Running locally)
+Choose your operating system below to set up all system dependencies (Python, Node.js, Redis, and Ollama) properly.
 
-### 1. Setup & Installation
-```bash
-# Clone and navigate
+---
+
+### 🪟 Windows Setup Guide
+
+#### 1. System Dependencies Installation
+*   **Python (3.9+)**: 
+    *   Download and run the installer from the [Python Downloads](https://www.python.org/downloads/) page. **Crucial:** Ensure you check the box that says **"Add Python to PATH"** before starting the installation.
+    *   *Alternative (via PowerShell):* `winget install Python.Python.3.11`
+*   **Node.js (LTS)**:
+    *   Download and run the installer from the [Node.js Official Website](https://nodejs.org/).
+    *   *Alternative (via PowerShell):* `winget install OpenJS.NodeJS.LTS`
+*   **Redis Server**: Redis does not natively run on Windows. Choose one of the options below:
+    *   **Option A: WSL2 (Recommended)**: Install WSL with `wsl --install` in PowerShell, restart your PC, open your Ubuntu/Linux terminal, and run:
+        ```bash
+        sudo apt update
+        sudo apt install redis-server -y
+        sudo service redis-server start
+        ```
+    *   **Option B: Docker**: Install Docker Desktop and run:
+        ```powershell
+        docker run -d -p 6379:6379 --name redis redis
+        ```
+    *   **Option C: Memurai**: Download and install [Memurai](https://www.memurai.com/) (a native Windows Redis compatible developer build).
+*   **Ollama (Local LLM)**:
+    *   Download and install from [Ollama's Website](https://ollama.com/download/windows).
+    *   Once Ollama is running in your system tray, open PowerShell and pull the model:
+        ```powershell
+        ollama pull llama3
+        ```
+
+#### 2. Project Setup & Installation
+Open PowerShell in the project root directory and run:
+```powershell
+# Setup Backend Virtual Environment & Dependencies
 cd server
-
-# Install Python dependencies
+python -m venv venv
+.\venv\Scripts\activate
 pip install -r requirements.txt
 
-# Setup Frontend
+# Setup Frontend Dependencies
 cd ../frontend
 npm install
 ```
 
-### 2. Running the Application (3 Terminals Required)
+---
 
-To run the full event-driven system, you must have three terminals open:
+### 🍎 macOS Setup Guide
 
-**Terminal 1: Redis Server**
+#### 1. System Dependencies Installation
+Using **Homebrew** is the easiest way to install and manage dependencies on macOS. If you don't have it, install it by running:
 ```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+*   **Python & Node.js**:
+    ```bash
+    brew install python node
+    ```
+*   **Redis Server**:
+    ```bash
+    brew install redis
+    brew services start redis  # Starts Redis and registers it to run automatically on boot
+    ```
+*   **Ollama (Local LLM)**:
+    ```bash
+    brew install ollama
+    # Or download the macOS App from https://ollama.com/download/mac
+    ```
+    After starting the Ollama app, open your terminal and pull the model:
+    ```bash
+    ollama pull llama3
+    ```
+
+#### 2. Project Setup & Installation
+Open your terminal in the project root directory and run:
+```bash
+# Setup Backend Virtual Environment & Dependencies
+cd server
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Setup Frontend Dependencies
+cd ../frontend
+npm install
+```
+
+---
+
+### 🐧 Linux Setup Guide (Ubuntu/Debian)
+
+#### 1. System Dependencies Installation
+*   **Python, Pip & Virtual Environment**:
+    ```bash
+    sudo apt update
+    sudo apt install python3 python3-pip python3-venv -y
+    ```
+*   **Node.js & npm**:
+    ```bash
+    sudo apt install nodejs npm -y
+    ```
+*   **Redis Server**:
+    ```bash
+    sudo apt install redis-server -y
+    sudo systemctl enable --now redis-server
+    ```
+*   **Ollama (Local LLM)**:
+    ```bash
+    curl -fsSL https://ollama.com/install.sh | sh
+    ollama pull llama3
+    ```
+
+#### 2. Project Setup & Installation
+Open your terminal in the project root directory and run:
+```bash
+# Setup Backend Virtual Environment & Dependencies
+cd server
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Setup Frontend Dependencies
+cd ../frontend
+npm install
+```
+
+---
+
+### 🚀 Running the Application (4 Terminals Required)
+
+To run the full event-driven system, you must have four terminals open:
+
+**Terminal 1: Redis Server** (If not already running as a background service)
+```bash
+# Linux / macOS (if not started via brew services):
 redis-server
+
+# Windows WSL2 (if using Option A):
+sudo service redis-server start
 ```
 
 **Terminal 2: Flask API (Backend)**
 ```bash
 cd server
+# On Windows (PowerShell):
+.\venv\Scripts\activate
+# On Linux / macOS:
+source venv/bin/activate
+
 python api.py
 ```
 
 **Terminal 3: Celery Worker (AI Processor)**
 ```bash
 cd server
-# On Windows:
+# On Windows (PowerShell):
+.\venv\Scripts\activate
 celery -A tasks worker --loglevel=info -P eventlet
-# On Linux/Mac:
+
+# On Linux / macOS:
+source venv/bin/activate
 celery -A tasks worker --loglevel=info
 ```
 
