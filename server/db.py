@@ -66,6 +66,7 @@ def init_db():
             id TEXT PRIMARY KEY,
             user_id TEXT,
             type TEXT, -- 'ats' or 'optimization'
+            name TEXT, -- Human readable target (eg filename)
             status TEXT DEFAULT 'pending', -- 'pending', 'processing', 'completed', 'failed'
             progress INTEGER DEFAULT 0,
             result TEXT, -- JSON string
@@ -77,6 +78,9 @@ def init_db():
     ''')
 
     # Ensure columns exist for legacy DBs [PHASE 8]
+    try:
+        cursor.execute("ALTER TABLE jobs ADD COLUMN name TEXT")
+    except sqlite3.OperationalError: pass
     try:
         cursor.execute("ALTER TABLE jobs ADD COLUMN started_at TIMESTAMP")
     except sqlite3.OperationalError: pass
@@ -95,6 +99,30 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users (id),
             FOREIGN KEY (job_id) REFERENCES jobs (id)
+        )
+    ''')
+
+    # Chat Sessions table [PERSISTENCE UPGRADE]
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS chat_sessions (
+            id TEXT PRIMARY KEY,
+            user_id TEXT,
+            title TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+
+    # Chat Messages table [PERSISTENCE UPGRADE]
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id TEXT PRIMARY KEY,
+            session_id TEXT,
+            role TEXT, -- 'user' or 'assistant'
+            content TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (session_id) REFERENCES chat_sessions (id) ON DELETE CASCADE
         )
     ''')
     
@@ -238,7 +266,7 @@ def get_chat_history(user_id, resume_id=None):
     return history
 # --- PHASE 1: JOB SYSTEM UTILITIES ---
 
-def create_job(user_id, job_type):
+def create_job(user_id, job_type, name=None):
     import uuid
     import datetime
     job_id = str(uuid.uuid4())
@@ -246,9 +274,9 @@ def create_job(user_id, job_type):
     cursor = conn.cursor()
     now = datetime.datetime.utcnow().isoformat() + 'Z'
     cursor.execute('''
-        INSERT INTO jobs (id, user_id, type, status, created_at)
-        VALUES (?, ?, ?, 'pending', ?)
-    ''', (job_id, user_id, job_type, now))
+        INSERT INTO jobs (id, user_id, type, name, status, created_at)
+        VALUES (?, ?, ?, ?, 'pending', ?)
+    ''', (job_id, user_id, job_type, name, now))
     conn.commit()
     conn.close()
     return job_id
@@ -258,7 +286,7 @@ def update_job_status(job_id, status, progress=0):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     now = datetime.datetime.utcnow().isoformat() + 'Z'
-    if status not in ['completed', 'failed', 'pending']:
+    if status not in ['completed', 'failed', 'pending', 'cancelled']:
         cursor.execute('''
             UPDATE jobs SET status = ?, progress = ?, started_at = ? 
             WHERE id = ? AND started_at IS NULL
@@ -342,3 +370,92 @@ def get_unread_count(user_id):
     count = cursor.fetchone()[0]
     conn.close()
     return count
+
+# --- CHAT UTILITIES [PERSISTENCE UPGRADE] ---
+
+def create_chat_session(user_id, title="New Conversation"):
+    import uuid
+    session_id = str(uuid.uuid4())
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO chat_sessions (id, user_id, title)
+        VALUES (?, ?, ?)
+    ''', (session_id, user_id, title))
+    conn.commit()
+    conn.close()
+    return session_id
+
+def get_chat_sessions(user_id):
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT * FROM chat_sessions 
+        WHERE user_id = ? 
+        ORDER BY updated_at DESC
+    ''', (user_id,))
+    sessions = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return sessions
+
+def get_chat_session(session_id):
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM chat_sessions WHERE id = ?', (session_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def update_chat_title(session_id, title):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE chat_sessions 
+        SET title = ?, updated_at = CURRENT_TIMESTAMP 
+        WHERE id = ?
+    ''', (title, session_id))
+    conn.commit()
+    conn.close()
+
+def save_chat_message(session_id, role, content):
+    import uuid
+    msg_id = str(uuid.uuid4())
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO chat_messages (id, session_id, role, content)
+        VALUES (?, ?, ?, ?)
+    ''', (msg_id, session_id, role, content))
+    # Also bump session updated_at
+    cursor.execute('''
+        UPDATE chat_sessions 
+        SET updated_at = CURRENT_TIMESTAMP 
+        WHERE id = ?
+    ''', (session_id,))
+    conn.commit()
+    conn.close()
+    return msg_id
+
+def get_chat_history(session_id):
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT * FROM chat_messages 
+        WHERE session_id = ? 
+        ORDER BY created_at ASC
+    ''', (session_id,))
+    messages = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return messages
+
+def delete_chat_session(session_id, user_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    # Ensure CASCADE handles child rows
+    cursor.execute('DELETE FROM chat_messages WHERE session_id = ?', (session_id,))
+    cursor.execute('DELETE FROM chat_sessions WHERE id = ? AND user_id = ?', (session_id, user_id))
+    conn.commit()
+    conn.close()

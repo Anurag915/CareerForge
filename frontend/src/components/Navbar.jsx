@@ -102,43 +102,44 @@ const Navbar = ({ activeTab, onTabClick, user, logout, processingQueue = [] }) =
     ], [user?.role]);
 
     const NavItem = ({ item, isMobile = false }) => {
-        const isActive = activeTab === item.id && location.pathname === '/';
+        const isActive = activeTab === item.id;
         return (
             <button
                 onClick={() => {
                     onTabClick(item.id);
                     if (isMobile) setIsMobileMenuOpen(false);
                 }}
-                className={`relative flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300 group
+                className={`relative flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 group
                     ${isActive 
-                        ? 'text-slate-900 dark:text-white' 
+                        ? 'text-blue-700 dark:text-blue-400 shadow-sm' 
                         : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                     }
                     ${isMobile ? 'w-full justify-start py-4 text-base' : ''}
                 `}
             >
-                {/* Active Indicator (Desktop only) - Fixed janky animation */}
+                {/* Sliding Background Active Pill */}
                 {!isMobile && isActive && (
                     <motion.div
-                        layoutId="nav-underline"
-                        className="absolute bottom-0 left-4 right-4 h-0.5 bg-slate-900 dark:bg-accent-500 rounded-full"
-                        transition={{ duration: 0.3, ease: "easeInOut" }}
+                        layoutId="nav-active-pill"
+                        className="absolute inset-0 bg-blue-50 dark:bg-blue-900/30 border border-blue-200/50 dark:border-blue-800/50 rounded-xl -z-10"
+                        initial={false}
+                        transition={{ type: "spring", stiffness: 380, damping: 30 }}
                     />
                 )}
                 
-                <item.icon className={`w-4 h-4 transition-transform duration-300 group-hover:scale-110 ${isActive ? 'text-slate-900 dark:text-accent-500' : ''}`} />
-                <span>{item.label}</span>
+                <item.icon className={`w-5 h-5 transition-transform duration-300 group-hover:scale-110 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'opacity-70'}`} />
+                <span className="relative z-10">{item.label}</span>
 
-                {/* Hover Glow Effect */}
-                {!isMobile && (
-                    <div className="absolute inset-0 bg-slate-100 dark:bg-slate-800 opacity-0 group-hover:opacity-100 rounded-xl -z-10 transition-opacity" />
+                {/* Subtle Hover Glow for inactive only */}
+                {!isMobile && !isActive && (
+                    <div className="absolute inset-0 bg-slate-100 dark:bg-slate-800/50 opacity-0 group-hover:opacity-100 rounded-xl -z-10 transition-opacity duration-200" />
                 )}
             </button>
         );
     };
 
     return (
-        <nav className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-300 h-20 flex items-center
+        <nav className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-300 h-16 flex items-center
             ${isScrolled 
                 ? 'bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 shadow-sm' 
                 : 'bg-transparent'
@@ -190,11 +191,11 @@ const Navbar = ({ activeTab, onTabClick, user, logout, processingQueue = [] }) =
                                         setNotifOpen(!notifOpen);
                                         if (!notifOpen) fetchNotifications();
                                     }}
-                                    className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors relative"
+                                    className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors relative"
                                 >
-                                    <Bell className="w-5 h-5" />
+                                    <Bell className="w-4 h-4" />
                                     {unreadCount > 0 && (
-                                        <span className="absolute top-2 right-2 w-4 h-4 bg-red-500 rounded-full border-2 border-white dark:border-slate-900 flex items-center justify-center text-[8px] font-black text-white">
+                                        <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-white dark:border-slate-900 flex items-center justify-center text-[7px] font-black text-white">
                                             {unreadCount}
                                         </span>
                                     )}
@@ -277,13 +278,13 @@ const Navbar = ({ activeTab, onTabClick, user, logout, processingQueue = [] }) =
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                                className="flex items-center space-x-3 p-1 pr-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all"
+                                className="flex items-center space-x-2 p-0.5 pr-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all"
                             >
-                                <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-700 overflow-hidden">
+                                <div className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-700 overflow-hidden">
                                     {user.avatar ? (
                                         <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
                                     ) : (
-                                        <User className="w-4 h-4 text-slate-500" />
+                                        <User className="w-3.5 h-3.5 text-slate-500" />
                                     )}
                                 </div>
                                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300 hidden sm:block truncate max-w-[100px]">

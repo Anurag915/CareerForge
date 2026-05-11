@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
-import { Activity, Clock, CheckCircle2, AlertCircle, ChevronRight, Loader2, RefreshCw } from 'lucide-react';
+import { Activity, Clock, CheckCircle2, AlertCircle, ChevronRight, Loader2, RefreshCw, Ban } from 'lucide-react';
 
 const parseDateTime = (str) => {
     if (!str) return new Date();
@@ -32,10 +32,21 @@ const JobsView = ({ onViewResult }) => {
         return () => clearInterval(interval);
     }, []);
 
+    const handleCancel = async (jobId) => {
+        if (!window.confirm("Are you sure you want to terminate this task? The queue position and current analysis progress will be lost.")) return;
+        try {
+            await axios.post(`http://127.0.0.1:5000/api/job/${jobId}/cancel`);
+            fetchJobs(); // Refresh list immediately
+        } catch (err) {
+            alert("Cancellation command failed to issue. Please refresh.");
+        }
+    };
+
     const getStatusIcon = (status) => {
         switch (status) {
             case 'completed': return <CheckCircle2 className="w-5 h-5 text-emerald-500" />;
             case 'failed': return <AlertCircle className="w-5 h-5 text-red-500" />;
+            case 'cancelled': return <Ban className="w-5 h-5 text-slate-500" />;
             case 'pending': return <Clock className="w-5 h-5 text-slate-400" />;
             default: return <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />;
         }
@@ -50,11 +61,11 @@ const JobsView = ({ onViewResult }) => {
 
     const totalJobs = jobs.length;
     const completedJobs = jobs.filter(j => j.status === 'completed').length;
-    const activeJobs = jobs.filter(j => j.status !== 'completed' && j.status !== 'failed').length;
+    const activeJobs = jobs.filter(j => !['completed', 'failed', 'cancelled'].includes(j.status)).length;
     const failedJobs = jobs.filter(j => j.status === 'failed').length;
 
     return (
-        <div className="w-full px-8 space-y-8">
+        <div className="w-full space-y-8 pb-10 theme-transition">
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
@@ -72,7 +83,7 @@ const JobsView = ({ onViewResult }) => {
             </div>
 
             {/* Metrics Dashboard Row */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                 {[
                     { label: 'Total Tasks', value: totalJobs, color: 'text-slate-900 dark:text-white', bg: 'bg-slate-50 dark:bg-slate-800/20', icon: Activity, iconColor: 'text-blue-500' },
                     { label: 'Completed', value: completedJobs, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50/50 dark:bg-emerald-500/5', icon: CheckCircle2, iconColor: 'text-emerald-500' },
@@ -113,31 +124,39 @@ const JobsView = ({ onViewResult }) => {
                             transition={{ delay: idx * 0.05 }}
                             className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 hover:border-blue-500/30 transition-all group"
                         >
-                            <div className="flex items-center justify-between">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                 <div className="flex items-center gap-4">
                                     <div className={`p-3 rounded-xl ${
                                         job.status === 'completed' ? 'bg-emerald-50 dark:bg-emerald-500/10' : 
                                         job.status === 'failed' ? 'bg-red-50 dark:bg-red-500/10' : 
+                                        job.status === 'cancelled' ? 'bg-slate-100 dark:bg-slate-800' :
                                         'bg-blue-50 dark:bg-blue-500/10'
                                     }`}>
                                         {getStatusIcon(job.status)}
                                     </div>
                                     <div>
                                         <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                            {job.type.toUpperCase()} Analysis
+                                            {job.name || `${job.type.toUpperCase()} Analysis`}
                                             <span className="text-[10px] text-slate-400 font-mono">#{job.id.substr(0,8)}</span>
                                         </h4>
+                                        {job.name && (
+                                            <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider mt-0.5">
+                                                {job.type} Pipeline
+                                            </div>
+                                        )}
                                         <div className="flex flex-wrap items-center gap-3 mt-1">
                                             <span className={`text-[10px] font-black uppercase tracking-widest ${
                                                 job.status === 'completed' ? 'text-emerald-500' :
                                                 job.status === 'failed' ? 'text-red-500' :
+                                                job.status === 'cancelled' ? 'text-slate-500' :
                                                 'text-blue-500'
                                             }`}>
                                                 {job.status === 'completed' ? 'Completed' :
                                                  job.status === 'failed' ? 'Failed' :
+                                                 job.status === 'cancelled' ? 'Manually Cancelled' :
                                                  job.status === 'Upload' ? 'Uploading resume...' :
                                                  job.status === 'processing' ? 'Analyzing resume...' :
-                                                 job.status} {job.status !== 'completed' && job.status !== 'failed' && `(${job.progress}%)`}
+                                                 job.status} {['completed', 'failed', 'cancelled'].indexOf(job.status) === -1 && `(${job.progress}%)`}
                                             </span>
                                             <span className="w-1 h-1 bg-slate-200 dark:bg-slate-800 rounded-full" />
                                             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
@@ -173,9 +192,19 @@ const JobsView = ({ onViewResult }) => {
                                         <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                                     </button>
                                 )}
+
+                                {['completed', 'failed', 'cancelled'].indexOf(job.status) === -1 && (
+                                    <button 
+                                        onClick={() => handleCancel(job.id)}
+                                        className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-900 hover:bg-red-50 dark:hover:bg-red-500/10 text-slate-400 hover:text-red-500 border border-slate-200 dark:border-slate-800 rounded-lg text-[10px] font-bold transition-all"
+                                    >
+                                        <Ban className="w-3 h-3" />
+                                        Cancel
+                                    </button>
+                                )}
                             </div>
                             
-                            {job.status !== 'completed' && job.status !== 'failed' && (
+                            {['completed', 'failed', 'cancelled'].indexOf(job.status) === -1 && (
                                 <div className="mt-4 w-full h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                                     <motion.div 
                                         className="h-full bg-blue-500"

@@ -13,252 +13,244 @@ import {
   PlusCircle,
   Trash2,
   Box,
+  History,
+  Loader2
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useChat } from "../context/ChatContext";
 
 const ChatUI = () => {
   const { user } = useAuth();
+  const { 
+    messages, 
+    sessions, 
+    activeSessionId, 
+    loadingSessionId, 
+    fetchingHistory, 
+    switchSession, 
+    createNewSession, 
+    deleteSession, 
+    sendMessage 
+  } = useChat();
+
+  // Computed local flag to restrict animations STRICTLY to the correct tab only
+  const isSending = !!loadingSessionId && (loadingSessionId === activeSessionId || (loadingSessionId === 'creating' && !activeSessionId));
+
   const [resumes, setResumes] = useState([]);
+  // Default local active context (passed voluntarily alongside messages)
   const [selectedResumeId, setSelectedResumeId] = useState("global");
-  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [historyLoading, setHistoryLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  
   const scrollRef = useRef(null);
 
+  // Fetch context vault (Resumes) on Mount
   useEffect(() => {
     const fetchResumes = async () => {
       try {
         const res = await axios.get("http://127.0.0.1:5000/resumes");
         setResumes(res.data);
       } catch (err) {
-        console.error("Failed to fetch resumes:", err);
+        console.error("Failed to load context vault:", err);
       }
     };
-
-    const fetchHistory = async () => {
-      try {
-        setHistoryLoading(true);
-        const res = await axios.get(
-          `http://127.0.0.1:5000/chat/history?resume_id=${selectedResumeId}`,
-        );
-        if (res.data.length > 0) {
-          setMessages(
-            res.data.map((msg) => ({
-              role: msg.role,
-              content: msg.content,
-              created_at: msg.created_at,
-            })),
-          );
-        } else {
-          setMessages([
-            {
-              role: "assistant",
-              content:
-                selectedResumeId === "global"
-                  ? "Hello! I'm your CareerForge AI assistant. I've analyzed your document vault and I'm ready to help you with your career strategy. What would you like to discuss today?"
-                  : `Hello! I'm ready to help you analyze this specific resume (${resumes.find((r) => r.id === selectedResumeId)?.filename || "loading..."}). What would you like to know?`,
-            },
-          ]);
-        }
-      } catch (err) {
-        console.error("Failed to fetch chat history:", err);
-        setMessages([
-          {
-            role: "assistant",
-            content:
-              "Hello! I'm your CareerForge AI assistant. How can I help you today?",
-          },
-        ]);
-      } finally {
-        setHistoryLoading(false);
-      }
-    };
-
     fetchResumes();
-    fetchHistory();
-  }, [selectedResumeId]);
+  }, []);
 
+  // Auto Scroll Logic
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, historyLoading]);
+  }, [messages, fetchingHistory]);
 
   const handleSend = async (e) => {
     e.preventDefault();
-    if (!input.trim() || loading) return;
-
-    const userMsg = { role: "user", content: input };
-    setMessages((prev) => [...prev, userMsg]);
-    setInput("");
-    setLoading(true);
-
-    try {
-      const endpoint =
-        selectedResumeId === "global"
-          ? "/global-chat"
-          : `/chat/${selectedResumeId}`;
-      const payload = { question: input };
-      if (selectedResumeId === "global") payload.resume_id = null;
-
-      const res = await axios.post(`http://127.0.0.1:5000${endpoint}`, payload);
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: res.data.answer,
-          context: res.data.context_used,
-        },
-      ]);
-    } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: "I apologize, but I encountered an error. Please try again.",
-        },
-      ]);
-    } finally {
-      setLoading(false);
-    }
+    if (!input.trim() || isSending) return;
+    
+    const query = input.trim();
+    setInput(""); // Fast clear
+    
+    // Fire dispatch through Context. It auto-wires sessions and persistence.
+    await sendMessage(query, selectedResumeId);
   };
+
+  const activeSessionTitle = sessions.find(s => s.id === activeSessionId)?.title || "New Conversation";
 
   return (
     <div className="flex flex-col h-full w-full theme-transition">
       <div className="flex flex-grow bg-white dark:bg-slate-900 overflow-hidden relative">
-        {/* Sidebar: Document Context */}
+        
+        {/* GLOBAL DUAL SIDEBAR: Sessions & Documents */}
         <motion.aside
           initial={false}
           animate={{
-            width: sidebarOpen ? 260 : 0,
+            width: sidebarOpen ? 280 : 0,
             opacity: sidebarOpen ? 1 : 0,
           }}
           className="bg-slate-50/50 dark:bg-slate-800/50 border-r border-slate-200 dark:border-slate-800 flex flex-col relative"
         >
-          <div className="p-4 flex flex-col h-full min-w-[260px]">
-            <div className="flex items-center space-x-2 mb-6 px-1">
-              <Box className="w-4 h-4 text-slate-900 dark:text-slate-100" />
-              <span className="text-[11px] font-bold text-slate-900 dark:text-slate-100 uppercase tracking-widest">
+          <div className="p-4 flex flex-col h-full min-w-[280px]">
+            
+            {/* Header: New Chat Trigger */}
+            <div className="mb-6">
+              <button
+                onClick={() => switchSession(null)}
+                className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-black tracking-widest transition-all hover:scale-[1.02] active:scale-95 ${
+                  !activeSessionId 
+                    ? "bg-blue-600 dark:bg-accent-600 text-white shadow-xl ring-4 ring-blue-500/20 border border-blue-400/30" 
+                    : "bg-slate-900 dark:bg-slate-800 text-slate-100 shadow-lg opacity-80 hover:opacity-100"
+                }`}
+              >
+                <PlusCircle className={`w-4 h-4 ${!activeSessionId ? 'animate-pulse' : ''}`} />
+                New Conversation
+              </button>
+            </div>
+
+            {/* PART 1: CHAT SESSIONS HISTORY (Scrollable Container) */}
+            <div className="flex items-center space-x-2 mb-3 px-1 text-slate-400">
+              <History className="w-3.5 h-3.5" />
+              <span className="text-[14px] font-black tracking-widest">
+                Recent Chats
+              </span>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-1 pr-1 custom-scrollbar min-h-[180px]">
+              {sessions.length === 0 ? (
+                <div className="text-[11px] text-slate-400 italic px-4 py-3">No previous chats.</div>
+              ) : (
+                sessions.map(ses => (
+                  <div key={ses.id} className="group relative">
+                    <button
+                      onClick={() => switchSession(ses.id)}
+                      className={`w-full text-left px-4 py-2.5 rounded-xl text-[13px] font-bold transition-all flex items-center gap-3 ${
+                        activeSessionId === ses.id
+                          ? "bg-blue-50 dark:bg-blue-900/30 shadow-sm text-blue-700 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800"
+                          : "text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/80 border border-transparent"
+                      }`}
+                    >
+                      <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${activeSessionId === ses.id ? 'text-blue-600 dark:text-blue-400' : 'opacity-40'}`} />
+                      <span className="truncate flex-grow pr-4">{ses.title}</span>
+                    </button>
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); deleteSession(ses.id); }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 text-slate-400 rounded-lg transition-all"
+                    >
+                        <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="h-px bg-slate-200 dark:bg-slate-800 my-4 mx-1"></div>
+
+            {/* PART 2: CONTEXT VAULT SELECTION */}
+            <div className="flex items-center space-x-2 mb-3 px-1 text-slate-400">
+              <Database className="w-3.5 h-3.5" />
+              <span className="text-[14px] font-blacktracking-widest">
                 Context Vault
               </span>
             </div>
 
-            <div className="flex-grow overflow-y-auto space-y-1.5 pr-1 scrollbar-hide">
+            <div className="flex-1 overflow-y-auto space-y-1 pr-1 custom-scrollbar min-h-[180px]">
               <button
                 onClick={() => setSelectedResumeId("global")}
-                className={`w-full text-left px-4 py-3 rounded-xl text-xs transition-all flex items-center space-x-3 ${
+                className={`w-full text-left px-4 py-2.5 rounded-xl text-[12px] transition-all flex items-center space-x-3 ${
                   selectedResumeId === "global"
-                    ? "bg-slate-900 dark:bg-accent-600 text-white shadow-lg shadow-slate-900/20 dark:shadow-accent-500/20"
-                    : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 text-blue-600 dark:text-blue-400 font-bold"
+                    : "text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/80"
                 }`}
               >
-                <Sparkles className="w-4 h-4" />
-                <span className="font-bold">Global Intelligence</span>
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Global Intelligence</span>
               </button>
-
-              <div className="py-2">
-                <div className="h-px bg-slate-100 dark:bg-slate-800 mx-2"></div>
-              </div>
 
               {resumes.map((r) => (
                 <button
                   key={r.id}
                   onClick={() => setSelectedResumeId(r.id)}
-                  className={`w-full text-left px-4 py-3 rounded-xl text-xs transition-all flex flex-col space-y-1 group ${
+                  className={`w-full text-left px-4 py-2.5 rounded-xl text-[12px] transition-all flex items-center gap-3 group ${
                     selectedResumeId === r.id
-                      ? "bg-slate-100 dark:bg-slate-800 border border-slate-900/10 dark:border-slate-700 text-slate-900 dark:text-slate-100 shadow-sm"
-                      : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 text-blue-600 dark:text-blue-400 font-bold"
+                      : "text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/80"
                   }`}
                 >
-                  <span className="font-bold truncate w-full">
-                    {r.filename}
-                  </span>
-                  <span className="text-[10px] opacity-60 font-mono">
-                    ID: {r.id}
-                  </span>
+                  <Box className={`w-3.5 h-3.5 shrink-0 ${selectedResumeId === r.id ? 'opacity-100' : 'opacity-40'}`} />
+                  <span className="truncate">{r.filename}</span>
                 </button>
               ))}
             </div>
 
-            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-              <button
-                onClick={() =>
-                  setMessages([
-                    {
-                      role: "assistant",
-                      content:
-                        "Conversation reset. How can I assist you today?",
-                    },
-                  ])
-                }
-                className="flex items-center space-x-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors text-[11px] font-bold uppercase tracking-widest px-1"
-              >
-                <PlusCircle className="w-4 h-4" />
-                <span>New Chat</span>
-              </button>
-            </div>
           </div>
         </motion.aside>
 
-        {/* Sidebar Toggle Button */}
+        {/* Sidebar Toggle Anchor */}
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
           className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-1 rounded-r-lg shadow-subtle hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-          style={{ marginLeft: sidebarOpen ? 260 : 0 }}
+          style={{ marginLeft: sidebarOpen ? 280 : 0 }}
         >
-          {sidebarOpen ? (
-            <ChevronLeft className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-          ) : (
-            <ChevronRight className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-          )}
+          {sidebarOpen ? <ChevronLeft className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
         </button>
 
-        {/* Main Chat Area */}
+        {/* MAIN CONVERSATION VIEWPORT */}
         <div className="flex-grow flex flex-col bg-white dark:bg-slate-900 relative">
-          {/* Chat Header */}
+          
+          {/* Dynamic Thread Header */}
           <div className="px-8 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/30 dark:bg-slate-900/50 backdrop-blur-md">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-500/10 rounded-lg text-blue-600 dark:text-blue-400">
                 <MessageSquare className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
-                  AI Career Intelligence
+                <h3 className="text-sm font-black text-slate-900 dark:text-white tracking-tight truncate max-w-md">
+                  {activeSessionTitle}
                 </h3>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">
-                    Session Active
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest flex items-center gap-2">
+                    Active
+                    <span className="opacity-40">|</span>
+                    Context: {selectedResumeId === 'global' ? 'Global' : resumes.find(r=>r.id===selectedResumeId)?.filename || 'Vault'}
                   </span>
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-widest px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-200/50 dark:border-slate-700/50">
-                Powered by Llama 3
-              </span>
-            </div>
           </div>
 
-          {/* Messages Container */}
+          {/* Message Stack Stream */}
           <div
             ref={scrollRef}
-            className="flex-grow overflow-y-auto px-8 py-10 space-y-10 scroll-smooth custom-scrollbar bg-slate-50/20 dark:bg-slate-950/20"
+            className="flex-grow overflow-y-auto px-6 md:px-10 py-10 space-y-10 scroll-smooth custom-scrollbar bg-slate-50/20 dark:bg-slate-950/20"
           >
             <AnimatePresence initial={false}>
-              {historyLoading ? (
+              {fetchingHistory ? (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   className="flex flex-col items-center justify-center h-full space-y-4"
                 >
-                  <div className="w-8 h-8 border-2 border-slate-900 dark:border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest">
-                    Restoring Context...
+                    Restoring Memory Bank...
                   </p>
+                </motion.div>
+              ) : messages.length === 0 ? (
+                <motion.div 
+                  initial={{opacity: 0, scale: 0.95}}
+                  animate={{opacity: 1, scale: 1}}
+                  className="flex flex-col items-center justify-center h-full text-center space-y-6 opacity-60 py-20"
+                >
+                  <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-3xl">
+                      <Sparkles className="w-10 h-10 text-blue-500" />
+                  </div>
+                  <div className="space-y-2">
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">CareerForge Intelligence</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">
+                        Start a dialog using your selected context vault below.
+                    </p>
+                  </div>
                 </motion.div>
               ) : (
                 messages.map((msg, idx) => (
@@ -268,9 +260,9 @@ const ChatUI = () => {
                     animate={{ opacity: 1, y: 0 }}
                     className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                   >
-                    <div
-                      className={`flex space-x-5 max-w-[80%] ${msg.role === "user" ? "flex-row-reverse space-x-reverse" : ""}`}
-                    >
+                    <div className={`flex space-x-5 max-w-[85%] ${msg.role === "user" ? "flex-row-reverse space-x-reverse" : ""}`}>
+                      
+                      {/* Avatar Gylph */}
                       <div
                         className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 shadow-lg border ${
                           msg.role === "user"
@@ -278,12 +270,10 @@ const ChatUI = () => {
                             : "bg-slate-900 dark:bg-blue-600 border-slate-900 dark:border-blue-500 text-white shadow-blue-500/10"
                         }`}
                       >
-                        {msg.role === "user" ? (
-                          <User className="w-5 h-5" />
-                        ) : (
-                          <Bot className="w-5 h-5" />
-                        )}
+                        {msg.role === "user" ? <User className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
                       </div>
+
+                      {/* Content Bubble */}
                       <div className="space-y-3">
                         <div
                           className={`p-5 rounded-[24px] text-[13px] leading-relaxed shadow-sm border theme-transition ${
@@ -293,54 +283,34 @@ const ChatUI = () => {
                           }`}
                         >
                           {msg.role === "assistant" ? (
-                            <div className="space-y-4">
-                              {msg.content.split("\n").map((line, lidx) => {
-                                const trimmed = line.trim();
-                                if (!trimmed)
-                                  return <div key={lidx} className="h-1" />;
-                                const isBullet =
-                                  trimmed.startsWith("•") ||
-                                  trimmed.startsWith("-") ||
-                                  /^\d+\./.test(trimmed);
-                                return (
-                                  <div
-                                    key={lidx}
-                                    className={`${isBullet ? "flex items-start space-x-3 pl-1" : ""}`}
-                                  >
-                                    {isBullet && (
-                                      <span className="text-blue-500 dark:text-blue-400 font-black mt-1.5 shrink-0 scale-125">
-                                        ·
-                                      </span>
-                                    )}
-                                    <span className="font-medium">
-                                      {isBullet
-                                        ? trimmed.replace(/^[•\-\d+\.]\s*/, "")
-                                        : trimmed}
-                                    </span>
-                                  </div>
-                                );
-                              })}
+                            <div className="space-y-4 whitespace-pre-wrap font-medium">
+                                {/* Support rendering line-breaks directly without complex parse if stored raw */}
+                                {msg.content}
                             </div>
                           ) : (
-                            <span className="font-medium">{msg.content}</span>
+                            <span className="font-medium whitespace-pre-wrap">{msg.content}</span>
                           )}
                         </div>
-                        {msg.context && (
-                          <div className="flex items-center space-x-2 px-4 animate-in fade-in slide-in-from-left-2 duration-700">
+
+                        {/* Attached Context Metadata indicator */}
+                        {msg.context_used && (
+                          <div className="flex items-center space-x-2 px-4 animate-in fade-in duration-500">
                             <Database className="w-3 h-3 text-blue-500" />
-                            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-tighter truncate max-w-sm">
-                              Context Source: {msg.context}
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-tighter truncate max-w-xs">
+                              Analyzed chunk: ...{msg.context_used.substr(0, 40)}...
                             </p>
                           </div>
                         )}
                       </div>
+
                     </div>
                   </motion.div>
                 ))
               )}
             </AnimatePresence>
 
-            {loading && (
+            {/* Dedicated Loading State directly hooked from Global Context */}
+            {isSending && (
               <div className="flex justify-start pl-15 animate-pulse">
                 <div className="bg-slate-100/50 dark:bg-slate-800/50 px-6 py-4 rounded-3xl rounded-tl-none border border-slate-200/50 dark:border-slate-700/50 flex items-center space-x-2 shadow-sm">
                   <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
@@ -351,55 +321,45 @@ const ChatUI = () => {
             )}
           </div>
 
-          {/* Fixed Bottom Input Area */}
+          {/* Sticky Footer Interaction Input */}
           <div className="p-6 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 shrink-0">
-            <form
-              onSubmit={handleSend}
-              className="relative group max-w-4xl mx-auto w-full"
-            >
+            <form onSubmit={handleSend} className="relative group max-w-4xl mx-auto w-full">
               <input
                 type="text"
                 value={input}
+                disabled={isSending || fetchingHistory}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={
                   selectedResumeId === "global"
-                    ? "Ask CareerForge intelligence anything..."
-                    : `Query context from ${resumes.find((r) => r.id === selectedResumeId)?.filename || "this profile"}...`
+                    ? "Ask intelligence anything (Global Vault)..."
+                    : `Query specific analysis context from vault...`
                 }
-                className="w-full bg-slate-50/50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 rounded-[20px] px-6 py-4 pr-16 text-[13px] text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500/50 transition-all shadow-inner group-hover:bg-white dark:group-hover:bg-slate-800/50 font-medium"
+                className="w-full bg-slate-50/50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 rounded-[20px] px-6 py-4 pr-16 text-[13px] text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500/50 transition-all shadow-inner group-hover:bg-white dark:group-hover:bg-slate-800/50 font-medium disabled:opacity-50"
               />
               <button
                 type="submit"
-                disabled={loading || !input.trim()}
+                disabled={isSending || fetchingHistory || !input.trim()}
                 className={`absolute right-2.5 top-1/2 -translate-y-1/2 w-11 h-11 rounded-[16px] flex items-center justify-center transition-all shadow-xl active:scale-95
-                                    ${
-                                      loading || !input.trim()
-                                        ? "bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-600"
-                                        : "bg-slate-900 dark:bg-blue-600 text-white hover:bg-black dark:hover:bg-blue-500 shadow-blue-500/20"
-                                    }`}
+                    ${
+                      isSending || !input.trim() || fetchingHistory
+                        ? "bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-600"
+                        : "bg-slate-900 dark:bg-blue-600 text-white hover:bg-black dark:hover:bg-blue-500 shadow-blue-500/20"
+                    }`}
               >
-                <Send className="w-5 h-5" />
+                {isSending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
               </button>
             </form>
             <div className="flex items-center justify-center gap-4 mt-4 opacity-50">
               <span className="h-px w-8 bg-slate-200 dark:bg-slate-800" />
               <p className="text-[9px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-[0.2em]">
-                AI Intelligence Cluster
+                Global Context Memory
               </p>
               <span className="h-px w-8 bg-slate-200 dark:bg-slate-800" />
             </div>
           </div>
         </div>
+
       </div>
-      <style jsx>{`
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-      `}</style>
     </div>
   );
 };

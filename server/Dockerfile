@@ -8,13 +8,16 @@ ENV PYTHONUNBUFFERED=1
 # Set the working directory in the container
 WORKDIR /app
 
-# Install system dependencies needed for python libraries, C++ compilers (for FAISS)
+# Install system dependencies needed for compiling python libraries (like FAISS)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements.txt and install Python dependencies
+# 1. Install CPU-only PyTorch first (This prevents the 3.5GB CUDA download!)
+RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+
+# 2. Copy requirements.txt and install other Python dependencies
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 

@@ -10,8 +10,15 @@ const LoginPage = () => {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const { login } = useAuth();
+    const { login, token } = useAuth();
     const navigate = useNavigate();
+
+    // Bulletproof Redirect: Force eject logged-in users immediately
+    React.useEffect(() => {
+        if (token || localStorage.getItem('token')) {
+            navigate('/', { replace: true });
+        }
+    }, [token, navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -20,7 +27,7 @@ const LoginPage = () => {
         try {
             const res = await axios.post('http://127.0.0.1:5000/login', { email, password });
             login(res.data.token, res.data.user);
-            navigate('/');
+            navigate('/', { replace: true });
         } catch (err) {
             setError(err.response?.data?.error || "Login failed. Check your credentials.");
         } finally {

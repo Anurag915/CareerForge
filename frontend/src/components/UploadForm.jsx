@@ -27,7 +27,7 @@ const formatFileSize = (bytes) => {
 };
 
 const UploadForm = ({ onUpload, isLoading, processingQueue = [] }) => {
-  const isProcessing = processingQueue.some(t => t.status !== 'completed' && t.status !== 'failed');
+  const isProcessing = processingQueue.some(t => !['completed', 'failed', 'cancelled'].includes(t.status));
   const [files, setFiles] = useState([]);
   const [jobDescription, setJobDescription] = useState("");
   const [error, setError] = useState("");
@@ -125,10 +125,30 @@ const UploadForm = ({ onUpload, isLoading, processingQueue = [] }) => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleCancelTask = async (taskId) => {
+    if (!window.confirm("Abort this processing task?")) return;
+    try {
+      await axios.post(`http://127.0.0.1:5000/api/job/${taskId}/cancel`);
+    } catch (e) {
+      console.error("Failed to issue cancel command.");
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
-    onUpload(files, jobDescription);
+    
+    try {
+      await onUpload(files, jobDescription);
+      // Form State Reset - enables instantaneous second processing queue batch!
+      setFiles([]);
+      setJobDescription("");
+      setIsJdValidated(false);
+      setCurrentStep(1);
+    } catch (err) {
+      // Parent handleUpload sets error in global app level usually, 
+      // but local wrapper protects component resets
+    }
   };
 
   const steps = [
@@ -173,7 +193,7 @@ const UploadForm = ({ onUpload, isLoading, processingQueue = [] }) => {
                 </motion.div>
                 
                 <div className="flex flex-col md:items-center">
-                  <span className={`text-[10px] font-black uppercase tracking-widest md:mt-3 ${currentStep >= s.id ? "text-slate-900 dark:text-white" : "text-slate-400"}`}>
+                  <span className={`text-[13px] font-black tracking-widest md:mt-3 ${currentStep >= s.id ? "text-slate-900 dark:text-white" : "text-slate-400"}`}>
                     {s.label}
                   </span>
                   <span className="text-[10px] text-slate-400 md:hidden">Step 0{s.id}</span>
@@ -399,13 +419,13 @@ const UploadForm = ({ onUpload, isLoading, processingQueue = [] }) => {
                 ) : (
                   <button
                     type="submit"
-                    disabled={!isFormValid || isLoading || isProcessing}
+                    disabled={!isFormValid || isLoading}
                     className="w-full sm:w-auto px-10 py-4 bg-emerald-500 text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-emerald-500/20 hover:bg-emerald-600 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale disabled:hover:scale-100 flex items-center justify-center gap-3"
                   >
-                    {isLoading || isProcessing ? (
+                    {isLoading ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>{isProcessing ? 'Processing in Background...' : 'Starting Analysis...'}</span>
+                        <span>Starting Analysis...</span>
                       </>
                     ) : (
                       <>
@@ -445,7 +465,7 @@ const UploadForm = ({ onUpload, isLoading, processingQueue = [] }) => {
 
             <div className="space-y-6">
               {processingQueue
-                .filter(t => t.status !== 'completed' && t.status !== 'failed')
+                .filter(t => !['completed', 'failed', 'cancelled'].includes(t.status))
                 .map((task) => {
                   const prog = task.progress || 10;
                   const stepsLog = [
@@ -463,7 +483,16 @@ const UploadForm = ({ onUpload, isLoading, processingQueue = [] }) => {
                           <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">File Analysis</h4>
                           <p className="text-sm font-bold text-slate-900 dark:text-white truncate mt-0.5">{task.name}</p>
                         </div>
-                        <span className="text-xs font-black text-blue-500">{prog}%</span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-black text-blue-500">{prog}%</span>
+                          <button 
+                            onClick={() => handleCancelTask(task.id)}
+                            className="p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-red-500 hover:text-white text-slate-400 rounded-lg transition-all"
+                            title="Terminate Processing"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Progress Bar */}

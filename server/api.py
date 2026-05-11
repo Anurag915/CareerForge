@@ -18,7 +18,8 @@ import bcrypt
 import datetime
 import threading
 from functools import wraps
-from tasks import analyze_resume_job
+from tasks import analyze_resume_job, optimize_resumes_job
+from celery_app import celery_app
 
 app = Flask(__name__)
 CORS(app)
@@ -237,53 +238,87 @@ def list_resumes():
     resumes = db.get_all_resumes(user_id)
     return jsonify(resumes)
 
-@app.route('/chat', methods=['POST'])
+@app.route('/api/chat/sessions', methods=['GET', 'POST'])
 @auth_required
-def chat():
-    data = request.json
-    resume_id = data.get('resume_id')
-    question = data.get('question', '')
-    
-    if not resume_id or not question:
-        return jsonify({"error": "resume_id and question are required"}), 400
-        
-    context = rag.query_index(resume_id, question)
-    answer = llm.get_chat_response(context, question)
-    
-    # 3. Save to DB [NEW]
+def handle_chat_sessions():
     user_id = request.user['user_id']
-    db.save_chat_message(user_id, 'user', question, resume_id)
-    db.save_chat_message(user_id, 'assistant', answer, resume_id)
+    if request.method == 'POST':
+        data = request.json or {}
+        title = data.get('title', 'New Conversation')
+        session_id = db.create_chat_session(user_id, title)
+        return jsonify({"id": session_id, "title": title}), 201
+    else:
+        sessions = db.get_chat_sessions(user_id)
+        return jsonify(sessions)
+
+@app.route('/api/chat/sessions/<session_id>', methods=['GET', 'DELETE'])
+@auth_required
+def handle_single_session(session_id):
+    user_id = request.user['user_id']
+    session = db.get_chat_session(session_id)
     
+    if not session or session['user_id'] != user_id:
+        return jsonify({"error": "Session not found"}), 404
+        
+    if request.method == 'DELETE':
+        db.delete_chat_session(session_id, user_id)
+        return jsonify({"success": True})
+    
+    messages = db.get_chat_history(session_id)
     return jsonify({
-        "answer": answer,
-        "resume_id": resume_id
+        "session": session,
+        "messages": messages
     })
 
-@app.route('/chat/<resume_id>', methods=['POST'])
+@app.route('/api/chat/sessions/<session_id>/message', methods=['POST'])
 @auth_required
-def chat_with_resume(resume_id):
-    data = request.json
-    question = data.get('question', '')
-    
-    if not question:
-        return jsonify({"error": "No question provided"}), 400
-        
-    # 1. Get context from RAG
-    context = rag.query_index(resume_id, question)
-    
-    # 2. Get response from LLM
-    answer = llm.get_chat_response(context, question)
-    
-    # 3. Save to DB [NEW]
+def send_chat_message(session_id):
     user_id = request.user['user_id']
-    db.save_chat_message(user_id, 'user', question, resume_id)
-    db.save_chat_message(user_id, 'assistant', answer, resume_id)
+    session = db.get_chat_session(session_id)
     
-    return jsonify({
-        "answer": answer,
-        "context_used": context[:200] + "..." if context else ""
-    })
+    if not session or session['user_id'] != user_id:
+        return jsonify({"error": "Unauthorized access to session"}), 403
+        
+    data = request.json
+    prompt = data.get('prompt', '').strip()
+    context_resume_id = data.get('resume_id') # Optional specific context
+    
+    if not prompt:
+        return jsonify({"error": "Empty prompt provided"}), 400
+        
+    # 1. Store User Message Prompt
+    db.save_chat_message(session_id, 'user', prompt)
+    
+    # 2. Context Sourcing from RAG (if non-global)
+    context = ""
+    if context_resume_id and context_resume_id != "global":
+        try:
+            context = rag.query_index(context_resume_id, prompt)
+        except Exception as e:
+            print(f"RAG retrieval fail for {context_resume_id}: {e}")
+    
+    # 3. LLM Dispatch
+    try:
+        answer = llm.get_chat_response(context, prompt)
+        
+        # 4. Auto-update generic titles on very first interaction round
+        existing_history = db.get_chat_history(session_id)
+        if len(existing_history) <= 2 and session['title'] == "New Conversation":
+            # Intelligent snapshot naming
+            snapped_title = prompt[:40] + ("..." if len(prompt) > 40 else "")
+            db.update_chat_title(session_id, snapped_title)
+            
+        # 5. Save finalized AI response
+        db.save_chat_message(session_id, 'assistant', answer)
+        
+        return jsonify({
+            "role": "assistant",
+            "content": answer,
+            "context_used": context[:120] if context else None
+        })
+    except Exception as e:
+        print(f"LLM CHAT ERROR: {e}")
+        return jsonify({"error": "Intelligence core failed to respond. Please try again."}), 500
 
 # Unified Resume Intelligence Retrieval
 # (This route is handled by get_resume_analysis below)
@@ -410,26 +445,21 @@ def compare_my_resumes():
     if not job_description or utils.is_gibberish(job_description):
         return jsonify({"error": "A valid job description is required"}), 400
         
-    if not resume_ids or len(resume_ids) < 2:
-        return jsonify({"error": "At least two resumes are required for A/B testing"}), 400
+    if not resume_ids or len(resume_ids) < 1:
+        return jsonify({"error": "At least one resume is required for optimization"}), 400
         
     user_id = request.user['user_id']
-    resume_list = []
-    for rid in resume_ids:
-        r = db.get_resume(rid, user_id)
-        if not r:
-            return jsonify({"error": f"Resume {rid} not found or unauthorized"}), 403
-        resume_list.append(r)
-        
-    results = comparison.compare_resumes(resume_list, job_description)
     
-    # Identify best resume
-    best_resume = results['metrics'][0] if results['metrics'] else None
+    # Generate lightweight job descriptor record tracking user intent
+    job_id = db.create_job(user_id, 'optimization', name="Resume Optimization")
+    
+    # Dispatch into the cluster with mapped Task ID for revocation control
+    optimize_resumes_job.apply_async(args=[job_id, data, user_id], task_id=job_id)
     
     return jsonify({
-        "best_resume_id": best_resume['id'] if best_resume else None,
-        "ranking": results['metrics'],
-        "ai_explanation": results['llm_analysis']
+        "jobId": job_id,
+        "status": "pending",
+        "message": "Optimization background task created successfully"
     })
 
 @app.route('/history', methods=['GET'])
@@ -439,15 +469,7 @@ def get_analysis_history():
     history = db.get_history(user_id)
     return jsonify(history)
 
-@app.route('/chat/history', methods=['GET'])
-@auth_required
-def get_chat_history():
-    user_id = request.user['user_id']
-    resume_id = request.args.get('resume_id')
-    if resume_id == 'global': resume_id = None
-    
-    history = db.get_chat_history(user_id, resume_id)
-    return jsonify(history)
+# --- LEGACY CHAT REMOVED (REPLACED WITH SESSIONS ABOVE) ---
 
 # --- PHASE 1: JOB SYSTEM APIs ---
 
@@ -458,11 +480,10 @@ def start_job():
     job_type = data.get('type', 'ats')
     user_id = request.user['user_id']
     
-    job_id = db.create_job(user_id, job_type)
+    job_id = db.create_job(user_id, job_type, name=data.get('filename'))
     
-    # PHASE 3: Dispatch to Scalable Queue (Celery/Redis)
-    # This replaces threading.Thread for multi-server reliability
-    analyze_resume_job.delay(job_id, data, user_id)
+    # PHASE 3: Dispatch to Scalable Queue (Celery/Redis) with mapped Task ID
+    analyze_resume_job.apply_async(args=[job_id, data, user_id], task_id=job_id)
     
     return jsonify({"jobId": job_id, "status": "pending"})
 
@@ -493,12 +514,40 @@ def get_all_jobs():
     cursor = conn.cursor()
     # Updated to include Phase 8 timestamps
     cursor.execute('''
-        SELECT id, type, status, progress, created_at, started_at, completed_at 
+        SELECT id, type, name, status, progress, created_at, started_at, completed_at 
         FROM jobs WHERE user_id = ? ORDER BY created_at DESC
     ''', (user_id,))
     jobs = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return jsonify(jobs)
+
+@app.route('/api/job/<job_id>/cancel', methods=['POST'])
+@auth_required
+def cancel_job(job_id):
+    job = db.get_job(job_id)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+    
+    if job['user_id'] != request.user['user_id']:
+        return jsonify({"error": "Unauthorized"}), 403
+        
+    if job['status'] in ['completed', 'failed', 'cancelled']:
+        return jsonify({"message": "Job is already finished", "status": job['status']}), 200
+
+    # 1. Update DB to visual state 'cancelled'
+    db.update_job_status(job_id, 'cancelled', job['progress'])
+    
+    # 2. Send Celery revocation directive to broadcast pool cache.
+    # Safer configuration for Windows/Eventlet compatibility.
+    try:
+        celery_app.control.revoke(job_id)
+    except Exception as e:
+        print(f"Celery revoke attempt triggered warning: {e}")
+
+    # 3. Alert realtime web interfaces immediately
+    socketio.emit(f'job:{job_id}', {'status': 'cancelled', 'message': 'Operation manually terminated by user'})
+
+    return jsonify({"message": "Cancellation command issued", "status": "cancelled"})
 
 # --- PHASE 8: NOTIFICATION APIs ---
 
@@ -619,7 +668,7 @@ def analyze_advanced():
     if os.path.exists(temp_path): os.remove(temp_path)
 
     # Create Job
-    job_id = db.create_job(user_id, 'ats')
+    job_id = db.create_job(user_id, 'ats', name=file.filename)
     
     # Background Processing Data
     job_data = {
@@ -631,8 +680,8 @@ def analyze_advanced():
         "resume_id": resume_id
     }
     
-    # PHASE 3: Enqueue to Redis
-    analyze_resume_job.delay(job_id, job_data, user_id)
+    # PHASE 3: Enqueue to Redis with explicitly mapped task_id matching local db job_id
+    analyze_resume_job.apply_async(args=[job_id, job_data, user_id], task_id=job_id)
     
     return jsonify({
         "jobId": job_id,

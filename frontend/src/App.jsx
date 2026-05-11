@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import UploadForm from './components/UploadForm';
 import ResultCard from './components/ResultCard';
 import LoadingScreen from './components/LoadingScreen';
@@ -95,7 +95,7 @@ function App() {
           
           if (isStale) {
             removeJobFromPersistence(job.id);
-          } else if (job.status !== 'completed' && job.status !== 'failed') {
+          } else if (['completed', 'failed', 'cancelled'].indexOf(job.status) === -1) {
             recoveredTasks.push({
               id: job.id,
               name: `Recovered Task (${job.id.substr(0,4)})`, // Or store names in LS
@@ -109,7 +109,7 @@ function App() {
               setProcessingQueue(prev => prev.map(t => 
                 t.id === job.id ? { ...t, ...update } : t
               ));
-              if (update.status === 'completed' || update.status === 'failed') {
+              if (['completed', 'failed', 'cancelled'].indexOf(update.status) !== -1) {
                 removeJobFromPersistence(job.id);
               }
             });
@@ -176,7 +176,7 @@ function App() {
               t.id === jobId ? { ...t, ...update } : t
             ));
             
-            if (update.status === 'completed' || update.status === 'failed') {
+            if (['completed', 'failed', 'cancelled'].indexOf(update.status) !== -1) {
               removeJobFromPersistence(jobId);
               socketRef.current.off(`job:${jobId}`);
             }
@@ -253,7 +253,6 @@ function App() {
               <div className="space-y-1">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="h-2 w-2 rounded-full bg-accent-500 animate-pulse" />
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">System Live</span>
                 </div>
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 dark:text-white tracking-tight leading-tight">
                   Welcome back, <br className="sm:hidden"/> {user?.name?.split(' ')[0] || 'Member'}
@@ -336,7 +335,7 @@ function App() {
       />
 
       {/* Main Container */}
-      <main className={`flex-grow flex flex-col relative z-10 w-full min-h-0 ${activeTab === 'chat' ? 'h-[calc(100vh-96px)] overflow-hidden pt-24 pb-0 px-0' : 'min-h-0 overflow-y-auto pt-24 pb-8 px-6 lg:px-12'}`}>
+      <main className={`flex-grow flex flex-col relative z-10 w-full min-h-0 ${activeTab === 'chat' ? 'h-[calc(100vh-80px)] overflow-hidden pt-16 pb-0 px-0' : 'min-h-0 overflow-y-auto pt-20 pb-8 px-6 lg:px-12'}`}>
         
         {/* Global Error Notification */}
         <AnimatePresence>
@@ -369,10 +368,13 @@ function App() {
 
         {/* Dynamic Page Content */}
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
+          {/* Anti-Recursion Guards: Bounce authed users out of auth pages */}
+          <Route path="/login" element={<Navigate to="/" replace />} />
+          <Route path="/signup" element={<Navigate to="/" replace />} />
           <Route path="/analysis/:id" element={<AnalysisPage />} />
           <Route path="/" element={renderDashboard()} />
+          {/* Catch-all safety net */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
     </div>

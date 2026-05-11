@@ -4,7 +4,19 @@ import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserPlus, Mail, Lock, User, Briefcase, Loader2, AlertCircle, Sparkles, ArrowLeft, ChevronDown } from 'lucide-react';
 
+import { useAuth } from '../context/AuthContext';
+
 const SignupPage = () => {
+    const { token } = useAuth();
+    const navigate = useNavigate();
+
+    // Bulletproof Redirect: Force eject logged-in users immediately
+    React.useEffect(() => {
+        if (token || localStorage.getItem('token')) {
+            navigate('/', { replace: true });
+        }
+    }, [token, navigate]);
+
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -14,7 +26,6 @@ const SignupPage = () => {
     const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const navigate = useNavigate();
 
     const roles = [
         { value: 'candidate', label: 'Candidate (Analyze Resumes)', description: 'Optimize resumes, get scores' },
