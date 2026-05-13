@@ -29,8 +29,15 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 JWT_SECRET = "careerforge-super-secret-key-2026" # In production, use os.getenv('JWT_SECRET')
 JWT_ALGORITHM = "HS256"
 
+# Localized SSL/TLS Fix for Flask-SocketIO message queue (redis-py requires lowercase 'none')
+RAW_REDIS = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+SOCKET_REDIS_URL = RAW_REDIS
+if RAW_REDIS.startswith('rediss://') and 'ssl_cert_reqs' not in RAW_REDIS:
+    separator = '&' if '?' in RAW_REDIS else '?'
+    SOCKET_REDIS_URL = f"{RAW_REDIS}{separator}ssl_cert_reqs=none"
+
 # Initialize Socket.IO with Redis as message queue for cross-process communication
-socketio = SocketIO(app, cors_allowed_origins="*", message_queue=os.getenv('REDIS_URL', 'redis://localhost:6379/0'))
+socketio = SocketIO(app, cors_allowed_origins="*", message_queue=SOCKET_REDIS_URL)
 
 from flask_socketio import join_room
 

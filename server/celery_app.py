@@ -6,18 +6,16 @@ import os
 
 REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 
-# Dynamic SSL/TLS Fix for Secure Managed Redis (e.g. Render rediss://)
+# Dynamic SSL/TLS Fix localized for Celery Broker & Backend (requires UPPERCASE CERT_NONE)
+CELERY_REDIS_URL = REDIS_URL
 if REDIS_URL.startswith('rediss://') and 'ssl_cert_reqs' not in REDIS_URL:
     separator = '&' if '?' in REDIS_URL else '?'
-    REDIS_URL = f"{REDIS_URL}{separator}ssl_cert_reqs=CERT_NONE"
-
-# Propagate sanitized URL back to system environment to dynamically patch sibling sockets/imports
-os.environ['REDIS_URL'] = REDIS_URL
+    CELERY_REDIS_URL = f"{REDIS_URL}{separator}ssl_cert_reqs=CERT_NONE"
 
 celery_app = Celery(
     'careerforge',
-    broker=REDIS_URL,
-    backend=REDIS_URL,
+    broker=CELERY_REDIS_URL,
+    backend=CELERY_REDIS_URL,
     include=['tasks']
 )
 
