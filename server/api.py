@@ -41,6 +41,22 @@ def on_join(data):
         join_room(f"user_{user_id}")
         print(f"User {user_id} joined their notification room.")
 
+def dispatch_job(job_func, job_id, data, user_id):
+    """
+    Intelligent Elastic Job Dispatcher.
+    Hooks into Celery if REDIS_URL is provisioned, otherwise seamlessly cascades
+    into a native Python Thread (No-Budget Infrastructure for Cloud Free Tiers!).
+    """
+    if os.getenv('REDIS_URL'):
+        job_func.apply_async(args=[job_id, data, user_id], task_id=job_id)
+    else:
+        import threading
+        # Celery task callable executes standard underlying logic wrapper natively
+        thread = threading.Thread(target=job_func, args=[job_id, data, user_id])
+        thread.daemon = True
+        thread.start()
+        print(f"CLOUD FREE TIER FALLBACK: Executing {job_func.__name__} {job_id} on Native Daemon Thread.")
+
 # Initialize Database
 db.init_db()
 
@@ -447,8 +463,8 @@ def compare_my_resumes():
     # Generate lightweight job descriptor record tracking user intent
     job_id = db.create_job(user_id, 'optimization', name="Resume Optimization")
     
-    # Dispatch into the cluster with mapped Task ID for revocation control
-    optimize_resumes_job.apply_async(args=[job_id, data, user_id], task_id=job_id)
+    # Dispatch into the cluster or fallback thread
+    dispatch_job(optimize_resumes_job, job_id, data, user_id)
     
     return jsonify({
         "jobId": job_id,
@@ -476,8 +492,8 @@ def start_job():
     
     job_id = db.create_job(user_id, job_type, name=data.get('filename'))
     
-    # PHASE 3: Dispatch to Scalable Queue (Celery/Redis) with mapped Task ID
-    analyze_resume_job.apply_async(args=[job_id, data, user_id], task_id=job_id)
+    # PHASE 3: Dispatch to Scalable Queue (Celery/Redis) or native cloud fallback
+    dispatch_job(analyze_resume_job, job_id, data, user_id)
     
     return jsonify({"jobId": job_id, "status": "pending"})
 
@@ -665,8 +681,8 @@ def analyze_advanced():
         "resume_id": resume_id
     }
     
-    # PHASE 3: Enqueue to Redis with explicitly mapped task_id matching local db job_id
-    analyze_resume_job.apply_async(args=[job_id, job_data, user_id], task_id=job_id)
+    # PHASE 3: Enqueue to Redis or native fallback thread
+    dispatch_job(analyze_resume_job, job_id, job_data, user_id)
     
     return jsonify({
         "jobId": job_id,

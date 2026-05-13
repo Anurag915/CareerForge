@@ -17,4 +17,4 @@ pdfplumber
 psycopg2-binary
 python-dotenv
 google-genai
-gunicorn
+gunicorn==20.1.0
