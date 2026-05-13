@@ -19,8 +19,16 @@
 
 | | |
 |:---:|:---:|
+| **Dashboard Overview** | **Seamless Document Upload** |
 | ![Dashboard](Outputs/Screenshot%202026-05-05%20161711.png) | ![Upload](Outputs/Screenshot%202026-05-05%20161728.png) |
-| ![Job Description](Outputs/Screenshot%202026-05-05%20161802.png) | [Analysis](Outputs/Screenshot%202026-05-05%20161928.png) | ![Analysis](Outputs/Screenshot%202026-05-05%20161948.png) | ![Chat UI](Outputs/Screenshot%202026-05-05%20162008.png) | ![Resume Comparison](Outputs/Screenshot%202026-05-05%20162253.png) | ![Result of Comparison](Outputs/Screenshot%202026-05-05%20162304.png) | ![Library of All Jobs](Outputs/Screenshot%202026-05-05%20162324.png) | ![Histroy of All Jobs](Outputs/Screenshot%202026-05-05%20162335.png) 
+| **Target Job Description** | **Deep Analysis Dashboard** |
+| ![Job Description](Outputs/Screenshot%202026-05-05%20161802.png) | ![Analysis](Outputs/Screenshot%202026-05-05%20161928.png) |
+| **ATS Match Report** | **Contextual AI Chat Assistant** |
+| ![Analysis Metrics](Outputs/Screenshot%202026-05-05%20161948.png) | ![Chat UI](Outputs/Screenshot%202026-05-05%20162008.png) |
+| **Multi-Resume A/B Comparison** | **Comparative Insights Engine** |
+| ![Resume Comparison](Outputs/Screenshot%202026-05-05%20162253.png) | ![Result of Comparison](Outputs/Screenshot%202026-05-05%20162304.png) |
+| **Active Job Queue** | **Persistent Search History** |
+| ![Library of All Jobs](Outputs/Screenshot%202026-05-05%20162324.png) | ![History of All Jobs](Outputs/Screenshot%202026-05-05%20162335.png) | 
 
 ---
 
