@@ -27,5 +27,5 @@ COPY . /app/
 # Expose the Flask port
 EXPOSE 5000
 
-# Launch with Production-Grade Gunicorn for Multi-Worker Concurrency
-CMD ["gunicorn", "--worker-class", "eventlet", "-w", "4", "-b", "0.0.0.0:5000", "api:app"]
+# Launch with Production-Grade Gunicorn scaled for Cloud Free Tiers (1 worker, dynamic port)
+CMD gunicorn --worker-class eventlet -w 1 -b 0.0.0.0:${PORT:-5000} api:app

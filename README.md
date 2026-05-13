@@ -19,8 +19,8 @@
 
 | | |
 |:---:|:---:|
-| ![Dashboard](Outputs/Screenshot%202026-05-05%20161711.png) | ![Analysis Queue](Outputs/Screenshot%202026-05-05%20161728.png) |
-| ![Notifications](Outputs/Screenshot%202026-05-05%20161802.png) | ![Chat UI](Outputs/Screenshot%202026-05-05%20161928.png) |
+| ![Dashboard](Outputs/Screenshot%202026-05-05%20161711.png) | ![Upload](Outputs/Screenshot%202026-05-05%20161728.png) |
+| ![Job Description](Outputs/Screenshot%202026-05-05%20161802.png) | [Analysis](Outputs/Screenshot%202026-05-05%20161928.png) | ![Analysis](Outputs/Screenshot%202026-05-05%20161948.png) | ![Chat UI](Outputs/Screenshot%202026-05-05%20162008.png) | ![Resume Comparison](Outputs/Screenshot%202026-05-05%20162253.png) | ![Result of Comparison](Outputs/Screenshot%202026-05-05%20162304.png) | ![Library of All Jobs](Outputs/Screenshot%202026-05-05%20162324.png) | ![Histroy of All Jobs](Outputs/Screenshot%202026-05-05%20162335.png) 
 
 ---
 
