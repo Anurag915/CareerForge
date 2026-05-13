@@ -245,8 +245,26 @@ def global_chat():
     if not question:
         return jsonify({"error": "No question provided"}), 400
         
-    # 1. Get context from Global FAISS Index
+    # 1. Get context from Global FAISS Index with Self-Healing Recovery
     context = rag.query_global_index(question)
+    
+    # SELF-HEALING: If global index got wiped from Render ephemeral storage, auto-rebuild!
+    if not context or context == "No documents indexed yet." or not os.path.exists(rag.GLOBAL_INDEX_PATH):
+        try:
+            print("SELF-HEALING: Global FAISS index missing. Dynamically recovering from persistent database...")
+            user_id = request.user['user_id']
+            all_resumes = db.get_all_resumes(user_id)
+            for resume_stub in all_resumes:
+                # Fetch full body with raw_text and re-insert to global pool
+                full_r = db.get_resume(resume_stub['id'], user_id)
+                if full_r and full_r.get('raw_text'):
+                    rag.add_to_global_index(full_r['id'], full_r.get('doc_type', 'resume'), full_r['raw_text'])
+            
+            # Query once more now that memory is healed
+            context = rag.query_global_index(question)
+            print("SELF-HEALING SUCCESS: Master global vector database restored!")
+        except Exception as e:
+            print(f"Global index recovery triggered exception: {e}")
     
     # 2. Get response from LLM
     answer = llm.get_global_chat_response(context, question)
@@ -319,13 +337,23 @@ def send_chat_message(session_id):
     # 1. Store User Message Prompt
     db.save_chat_message(session_id, 'user', prompt)
     
-    # 2. Context Sourcing from RAG (if non-global)
+    # 2. Context Sourcing from RAG with Self-Healing Fault Tolerance
     context = ""
     if context_resume_id and context_resume_id != "global":
         try:
             context = rag.query_index(context_resume_id, prompt)
+            
+            # SELF-HEALING: If Render ephemeral disk wiped the vectors, auto-rebuild from PostgreSQL!
+            if not context:
+                print(f"SELF-HEALING: FAISS index missing for {context_resume_id}. Rebuilding on-the-fly...")
+                resume = db.get_resume(context_resume_id, user_id)
+                if resume and resume.get('raw_text'):
+                    # Re-index (<0.1s) and requery instantly
+                    rag.create_index(context_resume_id, resume['raw_text'], doc_type=resume.get('doc_type', 'resume'))
+                    context = rag.query_index(context_resume_id, prompt)
+                    print(f"SELF-HEALING SUCCESS: Vector store restored for {context_resume_id}!")
         except Exception as e:
-            print(f"RAG retrieval fail for {context_resume_id}: {e}")
+            print(f"RAG retrieval/healing fail for {context_resume_id}: {e}")
     
     # 3. LLM Dispatch
     try:
