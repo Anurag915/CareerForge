@@ -112,7 +112,7 @@ const UploadForm = ({ onUpload, isLoading, processingQueue = [] }) => {
     
     try {
       const token = localStorage.getItem('token');
-      await axios.post('http://127.0.0.1:5000/validate-jd', 
+      await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/validate-jd`, 
         { job_description: jobDescription },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -128,7 +128,7 @@ const UploadForm = ({ onUpload, isLoading, processingQueue = [] }) => {
   const handleCancelTask = async (taskId) => {
     if (!window.confirm("Abort this processing task?")) return;
     try {
-      await axios.post(`http://127.0.0.1:5000/api/job/${taskId}/cancel`);
+      await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/job/${taskId}/cancel`);
     } catch (e) {
       console.error("Failed to issue cancel command.");
     }

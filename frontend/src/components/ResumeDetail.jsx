@@ -15,7 +15,7 @@ const ResumeDetail = () => {
         const fetchAnalysis = async () => {
             try {
                 setLoading(true);
-                const response = await axios.get(`http://127.0.0.1:5000/resume/${id}`);
+                const response = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/resume/${id}`);
                 setData(response.data);
                 setLoading(false);
             } catch (err) {

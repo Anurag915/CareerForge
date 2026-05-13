@@ -37,7 +37,7 @@ const SignupPage = () => {
         setLoading(true);
         setError(null);
         try {
-            await axios.post('http://127.0.0.1:5000/signup', formData);
+            await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/signup`, formData);
             navigate('/login', { state: { message: "Account created! Please sign in." } });
         } catch (err) {
             setError(err.response?.data?.error || "Signup failed. Try again.");

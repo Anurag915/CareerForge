@@ -35,16 +35,16 @@ const ABTestingView = () => {
 
     // Mount logic: Setup socket & load existing optimization jobs
     useEffect(() => {
-        socketRef.current = io('http://127.0.0.1:5000');
+        socketRef.current = io(import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000');
 
         const loadInitialData = async () => {
             try {
                 // 1. Load core resumes for the select panel
-                const resResp = await axios.get('http://127.0.0.1:5000/resumes');
+                const resResp = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/resumes`);
                 setResumes(resResp.data);
 
                 // 2. Load previous optimization jobs
-                const jobsResp = await axios.get('http://127.0.0.1:5000/api/jobs');
+                const jobsResp = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/jobs`);
                 // Filter for type 'optimization' explicitly
                 const optimizationJobs = jobsResp.data.filter(j => j.type === 'optimization');
                 setOptJobs(optimizationJobs);
@@ -89,7 +89,7 @@ const ABTestingView = () => {
                 // Refetch single job after 500ms purely to guarantee backend storage write consistency
                 setTimeout(async () => {
                     try {
-                        const finalData = await axios.get(`http://127.0.0.1:5000/api/job/${jobId}`);
+                        const finalData = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/job/${jobId}`);
                         setOptJobs(prev => prev.map(j => j.id === jobId ? finalData.data : j));
                     } catch (e) {}
                 }, 500);
@@ -114,7 +114,7 @@ const ABTestingView = () => {
         formData.append('persist', 'false'); 
 
         try {
-            const res = await axios.post('http://127.0.0.1:5000/analyze-advanced', formData);
+            const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/analyze-advanced`, formData);
             const newTemp = {
                 id: res.data.resume_id,
                 filename: file.filename || file.name,
@@ -136,7 +136,7 @@ const ABTestingView = () => {
         setLoading(true);
         setError(null);
         try {
-            const res = await axios.post('http://127.0.0.1:5000/compare-my-resumes', {
+            const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/compare-my-resumes`, {
                 resume_ids: validSelectedIds, // Pass strictly valid IDs only
                 job_description: jobDescription
             });
@@ -171,7 +171,7 @@ const ABTestingView = () => {
     const handleCancelOptimization = async (jobId) => {
         if (!window.confirm("Terminate optimization run? All processed results will be lost.")) return;
         try {
-            await axios.post(`http://127.0.0.1:5000/api/job/${jobId}/cancel`);
+            await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/job/${jobId}/cancel`);
             // Fast Optimistic update UI locally to reflect cancel without waiting for socket bounce
             setOptJobs(prev => prev.map(j => j.id === jobId ? {...j, status: 'cancelled'} : j));
         } catch (e) {
@@ -195,7 +195,7 @@ const ABTestingView = () => {
 
         // Otherwise, lazy-load the high-bandwidth payload from backend
         try {
-            const response = await axios.get(`http://127.0.0.1:5000/api/job/${jobId}`);
+            const response = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/job/${jobId}`);
             setOptJobs(prev => prev.map(j => 
                 j.id === jobId ? { ...j, result: response.data.result } : j
             ));

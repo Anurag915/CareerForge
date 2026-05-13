@@ -17,7 +17,7 @@ const JobsView = ({ onViewResult }) => {
 
     const fetchJobs = async () => {
         try {
-            const res = await axios.get('http://127.0.0.1:5000/api/jobs');
+            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/jobs`);
             setJobs(res.data);
         } catch (err) {
             console.error("Failed to fetch jobs:", err);
@@ -35,7 +35,7 @@ const JobsView = ({ onViewResult }) => {
     const handleCancel = async (jobId) => {
         if (!window.confirm("Are you sure you want to terminate this task? The queue position and current analysis progress will be lost.")) return;
         try {
-            await axios.post(`http://127.0.0.1:5000/api/job/${jobId}/cancel`);
+            await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/job/${jobId}/cancel`);
             fetchJobs(); // Refresh list immediately
         } catch (err) {
             alert("Cancellation command failed to issue. Please refresh.");

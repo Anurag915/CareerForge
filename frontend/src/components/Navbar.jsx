@@ -38,7 +38,7 @@ const Navbar = ({ activeTab, onTabClick, user, logout, processingQueue = [] }) =
 
         const fetchInitialData = async () => {
             try {
-                const countRes = await axios.get('http://127.0.0.1:5000/api/notifications/unread-count', {
+                const countRes = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/notifications/unread-count`, {
                     headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
                 });
                 setUnreadCount(countRes.data.count);
@@ -51,7 +51,7 @@ const Navbar = ({ activeTab, onTabClick, user, logout, processingQueue = [] }) =
     // Handle Socket notifications
     useEffect(() => {
         if (!user) return;
-        const socket = io('http://127.0.0.1:5000');
+        const socket = io(import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000');
         
         socket.emit('join', { user_id: user.user_id });
 
@@ -65,7 +65,7 @@ const Navbar = ({ activeTab, onTabClick, user, logout, processingQueue = [] }) =
 
     const fetchNotifications = async () => {
         try {
-            const res = await axios.get('http://127.0.0.1:5000/api/notifications', {
+            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/notifications`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
             setNotifications(res.data);
@@ -74,7 +74,7 @@ const Navbar = ({ activeTab, onTabClick, user, logout, processingQueue = [] }) =
 
     const handleMarkAsRead = async (id) => {
         try {
-            await axios.post(`http://127.0.0.1:5000/api/notifications/${id}/read`, {}, {
+            await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/notifications/${id}/read`, {}, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
             setUnreadCount(prev => Math.max(0, prev - 1));

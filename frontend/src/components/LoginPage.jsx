@@ -25,7 +25,7 @@ const LoginPage = () => {
         setLoading(true);
         setError(null);
         try {
-            const res = await axios.post('http://127.0.0.1:5000/login', { email, password });
+            const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/login`, { email, password });
             login(res.data.token, res.data.user);
             navigate('/', { replace: true });
         } catch (err) {

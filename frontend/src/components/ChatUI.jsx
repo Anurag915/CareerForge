@@ -48,7 +48,7 @@ const ChatUI = () => {
   useEffect(() => {
     const fetchResumes = async () => {
       try {
-        const res = await axios.get("http://127.0.0.1:5000/resumes");
+        const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/resumes`);
         setResumes(res.data);
       } catch (err) {
         console.error("Failed to load context vault:", err);

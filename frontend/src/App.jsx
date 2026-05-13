@@ -71,7 +71,7 @@ function App() {
 
   // Phase 4: Socket.IO Setup
   useEffect(() => {
-    socketRef.current = io('http://127.0.0.1:5000');
+    socketRef.current = io(import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000');
     
     // Phase 5: Job Recovery on mount
     const recoverJobs = async () => {
@@ -85,7 +85,7 @@ function App() {
       
       for (const jobId of savedJobIds) {
         try {
-          const res = await axios.get(`http://127.0.0.1:5000/api/job/${jobId}`, {
+          const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/job/${jobId}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           
@@ -152,7 +152,7 @@ function App() {
         formData.append('job_description', jobDescription);
         
         // 1. Start the Job
-        const res = await axios.post('http://127.0.0.1:5000/analyze-advanced', formData, {
+        const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/analyze-advanced`, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
         
@@ -199,7 +199,7 @@ function App() {
   const handleViewJobResult = async (jobId) => {
     try {
       setLoading(true);
-      const res = await axios.get(`http://127.0.0.1:5000/api/job/${jobId}`);
+      const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/job/${jobId}`);
       if (res.data.status === 'completed' && res.data.result) {
         setResults(res.data.result);
         setActiveTab('analyze'); // Navigate to dashboard
