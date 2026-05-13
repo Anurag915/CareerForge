@@ -8,6 +8,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { io } from 'socket.io-client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { useTheme } from '../context/ThemeContext';
 
@@ -27,28 +28,55 @@ const Navbar = ({ activeTab, onTabClick, user, logout, processingQueue = [] }) =
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const [notifOpen, setNotifOpen] = useState(false);
-    const [notifications, setNotifications] = useState([]);
-    const [unreadCount, setUnreadCount] = useState(0);
+    const queryClient = useQueryClient();
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Phase 8: Notifications Logic
-    useEffect(() => {
-        if (!user) return;
+    // Intelligent Caching: Fetch unread counts with lazy revalidation
+    const { data: unreadCountData } = useQuery({
+        queryKey: ['unread-count', user?.user_id],
+        queryFn: async () => {
+            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/notifications/unread-count`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            return res.data.count;
+        },
+        enabled: !!user,
+        staleTime: 30000, // 30s staletime unless forced by WebSockets
+    });
+    const unreadCount = unreadCountData ?? 0;
 
-        const fetchInitialData = async () => {
-            try {
-                const countRes = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/notifications/unread-count`, {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                });
-                setUnreadCount(countRes.data.count);
-            } catch (err) { console.error("Notif error", err); }
-        };
+    // Dynamic Ingestion: Lazy-loading notifications ONLY when the user opens the dropdown tray!
+    const { data: notifications = [], refetch: fetchNotifications } = useQuery({
+        queryKey: ['notifications', user?.user_id],
+        queryFn: async () => {
+            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/notifications`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            return res.data;
+        },
+        enabled: !!user && notifOpen, // Laziness saves tremendous backend IO
+    });
 
-        fetchInitialData();
-    }, [user]);
+    // Mark Read Mutation
+    const markReadMutation = useMutation({
+        mutationFn: async (id) => {
+            await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/notifications/${id}/read`, {}, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+        },
+        onSuccess: () => {
+            // Fully clear query cache ensuring badge count and dropdown stay perfectly synced!
+            queryClient.invalidateQueries({ queryKey: ['unread-count', user?.user_id] });
+            queryClient.invalidateQueries({ queryKey: ['notifications', user?.user_id] });
+        }
+    });
 
-    // Handle Socket notifications
+    const handleMarkAsRead = (id) => {
+        markReadMutation.mutate(id);
+    };
+
+    // Real-Time Invalidation: Binds socket broadcasts to client cache refreshes
     useEffect(() => {
         if (!user) return;
         const socket = io(import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000');
@@ -56,31 +84,15 @@ const Navbar = ({ activeTab, onTabClick, user, logout, processingQueue = [] }) =
         socket.emit('join', { user_id: user.user_id });
 
         socket.on('notification:new', (data) => {
-            setUnreadCount(prev => prev + 1);
-            if (notifOpen) fetchNotifications();
+            // Automatically trigger background query invalidate - zero local count maths needed!
+            queryClient.invalidateQueries({ queryKey: ['unread-count', user?.user_id] });
+            if (notifOpen) {
+                queryClient.invalidateQueries({ queryKey: ['notifications', user?.user_id] });
+            }
         });
 
         return () => socket.disconnect();
     }, [user, notifOpen]);
-
-    const fetchNotifications = async () => {
-        try {
-            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/notifications`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
-            setNotifications(res.data);
-        } catch (err) { console.error("Fetch notifs error", err); }
-    };
-
-    const handleMarkAsRead = async (id) => {
-        try {
-            await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/notifications/${id}/read`, {}, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
-            setUnreadCount(prev => Math.max(0, prev - 1));
-            setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: 1 } : n));
-        } catch (err) { console.error("Mark read error", err); }
-    };
 
     // Scroll detection for shadow and glass effect
     useEffect(() => {

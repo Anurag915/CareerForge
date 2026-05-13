@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { History, FileText, Calendar, ChevronRight, Activity } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 
 const parseDateTime = (str) => {
     if (!str) return new Date();
@@ -14,22 +14,13 @@ const parseDateTime = (str) => {
 
 const HistoryView = () => {
     const navigate = useNavigate();
-    const [history, setHistory] = useState([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchHistory = async () => {
-            try {
-                const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/history`);
-                setHistory(res.data);
-            } catch (err) {
-                console.error("Failed to fetch history:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchHistory();
-    }, []);
+    const { data: history = [], isLoading: loading } = useQuery({
+        queryKey: ['history'],
+        queryFn: async () => {
+            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/history`);
+            return res.data;
+        }
+    });
 
     if (loading) return (
         <div className="w-full py-12 flex flex-col items-center justify-center space-y-4 theme-transition">

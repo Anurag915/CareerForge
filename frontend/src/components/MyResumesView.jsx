@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, UploadCloud, Trash2, Search, Plus, Calendar, ShieldCheck } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const parseDateTime = (str) => {
     if (!str) return new Date();
@@ -12,33 +13,21 @@ const parseDateTime = (str) => {
 };
 
 const MyResumesView = () => {
-    const [resumes, setResumes] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [uploading, setUploading] = useState(false);
+    const queryClient = useQueryClient();
     const [searchQuery, setSearchQuery] = useState('');
 
-    const fetchResumes = async () => {
-        setLoading(true);
-        try {
+    // Fetch Hook with Caching
+    const { data: resumes = [], isLoading: loading } = useQuery({
+        queryKey: ['resumes'],
+        queryFn: async () => {
             const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/resumes`);
-            setResumes(res.data);
-        } catch (err) {
-            console.error("Failed to fetch resumes:", err);
-        } finally {
-            setLoading(false);
+            return res.data;
         }
-    };
+    });
 
-    useEffect(() => {
-        fetchResumes();
-    }, []);
-
-    const handleUpload = async (e) => {
-        const files = Array.from(e.target.files);
-        if (files.length === 0) return;
-
-        setUploading(true);
-        try {
+    // Upload Mutation with Global Cache Invalidation
+    const uploadMutation = useMutation({
+        mutationFn: async (files) => {
             for (const file of files) {
                 const formData = new FormData();
                 formData.append('resume', file);
@@ -46,13 +35,24 @@ const MyResumesView = () => {
                 formData.append('persist', 'true');
                 await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/upload`, formData);
             }
-            fetchResumes();
-        } catch (err) {
+        },
+        onSuccess: () => {
+            // Auto-invalidate resumes cache ensuring both Library and Optimization tabs show updated files
+            queryClient.invalidateQueries({ queryKey: ['resumes'] });
+        },
+        onError: (err) => {
             console.error("Upload failed:", err);
-        } finally {
-            setUploading(false);
+            alert("Some resume files failed to upload. Please verify their formats and try again.");
         }
+    });
+
+    const handleUpload = (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+        uploadMutation.mutate(files);
     };
+
+    const uploading = uploadMutation.isPending;
 
     const filteredResumes = resumes.filter(r => 
         r.filename.toLowerCase().includes(searchQuery.toLowerCase())

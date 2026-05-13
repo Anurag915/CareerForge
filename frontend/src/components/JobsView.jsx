@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { Activity, Clock, CheckCircle2, AlertCircle, ChevronRight, Loader2, RefreshCw, Ban } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const parseDateTime = (str) => {
     if (!str) return new Date();
@@ -12,34 +12,43 @@ const parseDateTime = (str) => {
 };
 
 const JobsView = ({ onViewResult }) => {
-    const [jobs, setJobs] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const queryClient = useQueryClient();
 
-    const fetchJobs = async () => {
-        try {
+    // Intelligent Fetch Configuration
+    const { data: jobs = [], isLoading: loading, refetch: fetchJobs } = useQuery({
+        queryKey: ['jobs'],
+        queryFn: async () => {
             const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/jobs`);
-            setJobs(res.data);
-        } catch (err) {
-            console.error("Failed to fetch jobs:", err);
-        } finally {
-            setLoading(false);
+            return res.data;
+        },
+        // Adaptive Polling Strategy: Poll every 3s ONLY when background jobs are running, 
+        // otherwise fallback to slow heartbeat to preserve battery/bandwidth.
+        refetchInterval: (query) => {
+            const activeData = query.state.data;
+            if (!activeData || activeData.length === 0) return 30000;
+            const hasActiveJobs = activeData.some(j => !['completed', 'failed', 'cancelled'].includes(j.status));
+            return hasActiveJobs ? 3000 : 20000;
         }
-    };
+    });
 
-    useEffect(() => {
-        fetchJobs();
-        const interval = setInterval(fetchJobs, 5000); // Poll every 5s for updates
-        return () => clearInterval(interval);
-    }, []);
-
-    const handleCancel = async (jobId) => {
-        if (!window.confirm("Are you sure you want to terminate this task? The queue position and current analysis progress will be lost.")) return;
-        try {
+    // Cancel Task Mutation
+    const cancelMutation = useMutation({
+        mutationFn: async (jobId) => {
             await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/job/${jobId}/cancel`);
-            fetchJobs(); // Refresh list immediately
-        } catch (err) {
-            alert("Cancellation command failed to issue. Please refresh.");
+        },
+        onSuccess: () => {
+            // Invalidate queue to instantly show cancelled state
+            queryClient.invalidateQueries({ queryKey: ['jobs'] });
+        },
+        onError: (err) => {
+            console.error("Cancellation error:", err);
+            alert("Cancellation command failed to issue. Please refresh the page.");
         }
+    });
+
+    const handleCancel = (jobId) => {
+        if (!window.confirm("Are you sure you want to terminate this task? The queue position and current analysis progress will be lost.")) return;
+        cancelMutation.mutate(jobId);
     };
 
     const getStatusIcon = (status) => {

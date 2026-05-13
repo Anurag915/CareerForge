@@ -2,13 +2,30 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
 import { 
     Layers, Check, BrainCircuit, Sparkles, FileText, TrendingUp, 
     Trophy, AlertCircle, Clock, Loader2, ChevronDown, ChevronUp, Ban 
 } from 'lucide-react';
 
 const ABTestingView = () => {
-    const [resumes, setResumes] = useState([]);
+    // React Query Shared Caches (Shared with Library & Queue tabs)
+    const { data: resumes = [] } = useQuery({
+        queryKey: ['resumes'],
+        queryFn: async () => {
+            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/resumes`);
+            return res.data;
+        }
+    });
+
+    const { data: allJobs = [] } = useQuery({
+        queryKey: ['jobs'],
+        queryFn: async () => {
+            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/jobs`);
+            return res.data;
+        }
+    });
+
     const [selectedIds, setSelectedIds] = useState(() => JSON.parse(sessionStorage.getItem('abtest_selectedIds') || '[]'));
     const [jobDescription, setJobDescription] = useState(() => sessionStorage.getItem('abtest_jobDescription') || '');
     const [tempResumes, setTempResumes] = useState(() => JSON.parse(sessionStorage.getItem('abtest_tempResumes') || '[]'));
@@ -33,39 +50,28 @@ const ABTestingView = () => {
         sessionStorage.setItem('abtest_tempResumes', JSON.stringify(tempResumes));
     }, [selectedIds, jobDescription, tempResumes]);
 
-    // Mount logic: Setup socket & load existing optimization jobs
+    // Setup socket on mount
     useEffect(() => {
         socketRef.current = io(import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000');
-
-        const loadInitialData = async () => {
-            try {
-                // 1. Load core resumes for the select panel
-                const resResp = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/resumes`);
-                setResumes(resResp.data);
-
-                // 2. Load previous optimization jobs
-                const jobsResp = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/jobs`);
-                // Filter for type 'optimization' explicitly
-                const optimizationJobs = jobsResp.data.filter(j => j.type === 'optimization');
-                setOptJobs(optimizationJobs);
-
-                // 3. Bind listeners to active running jobs
-                optimizationJobs.forEach(job => {
-                    if (job.status !== 'completed' && job.status !== 'failed') {
-                        attachSocketListener(job.id);
-                    }
-                });
-            } catch (err) {
-                console.error("Initialization failed:", err);
-            }
-        };
-
-        loadInitialData();
-
         return () => {
             if (socketRef.current) socketRef.current.disconnect();
         };
     }, []);
+
+    // Hydrate optJobs from central query cache once loaded
+    useEffect(() => {
+        if (allJobs.length > 0 && optJobs.length === 0) {
+            const optimizationJobs = allJobs.filter(j => j.type === 'optimization');
+            setOptJobs(optimizationJobs);
+
+            // Bind listeners to any active running jobs
+            optimizationJobs.forEach(job => {
+                if (job.status !== 'completed' && job.status !== 'failed') {
+                    attachSocketListener(job.id);
+                }
+            });
+        }
+    }, [allJobs]);
 
     const attachSocketListener = (jobId) => {
         if (!socketRef.current) return;
