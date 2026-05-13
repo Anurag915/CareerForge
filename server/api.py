@@ -4,7 +4,6 @@ eventlet.monkey_patch()
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
-import sqlite3
 import json
 import os
 import uuid
@@ -59,6 +58,13 @@ def auth_required(f):
                 token = token.split(' ')[1]
             
             data = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+            
+            # Bulletproof Check: Ensure user actually exists in this DB instance!
+            # Prevents crashing when switching DBs while holding stale JWTs.
+            user = db.get_user_by_id(data.get('user_id'))
+            if not user:
+                 return jsonify({"error": "User no longer exists in system. Please sign up again."}), 401
+                 
             request.user = data
         except jwt.ExpiredSignatureError:
             return jsonify({"error": "Token has expired"}), 401
@@ -329,20 +335,8 @@ import comparison
 @auth_required
 def get_resume_analysis(resume_id):
     print(f"DEBUG - FETCHING ANALYSIS FOR: {resume_id}")
-    conn = sqlite3.connect(db.DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
     user_id = request.user['user_id']
-    # Get the latest analysis for this resume (ensuring user owns it)
-    cursor.execute('''
-        SELECT a.detailed_json, a.job_description, r.filename, a.ats_score, r.summary, r.skills, r.experience, r.education, r.projects, r.achievements, r.other_sections
-        FROM analysis_results a
-        JOIN resumes r ON a.resume_id = r.id
-        WHERE r.id = ? AND r.user_id = ?
-        ORDER BY a.id DESC LIMIT 1
-    ''', (resume_id, user_id))
-    row = cursor.fetchone()
-    conn.close()
+    row = db.get_latest_analysis_for_resume(resume_id, user_id)
     
     if not row:
         return jsonify({"error": "Analysis not found for this resume"}), 404
@@ -509,16 +503,7 @@ def get_job_status(job_id):
 @auth_required
 def get_all_jobs():
     user_id = request.user['user_id']
-    conn = sqlite3.connect(db.DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    # Updated to include Phase 8 timestamps
-    cursor.execute('''
-        SELECT id, type, name, status, progress, created_at, started_at, completed_at 
-        FROM jobs WHERE user_id = ? ORDER BY created_at DESC
-    ''', (user_id,))
-    jobs = [dict(row) for row in cursor.fetchall()]
-    conn.close()
+    jobs = db.get_all_user_jobs(user_id)
     return jsonify(jobs)
 
 @app.route('/api/job/<job_id>/cancel', methods=['POST'])

@@ -27,5 +27,5 @@ COPY . /app/
 # Expose the Flask port
 EXPOSE 5000
 
-# Default command (used for the Flask API container)
-CMD ["python", "api.py"]
+# Launch with Production-Grade Gunicorn for Multi-Worker Concurrency
+CMD ["gunicorn", "--worker-class", "eventlet", "-w", "4", "-b", "0.0.0.0:5000", "api:app"]

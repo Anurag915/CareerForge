@@ -1,16 +1,28 @@
-import sqlite3
+import psycopg2
+from psycopg2.extras import RealDictCursor
 import json
 import os
+from dotenv import load_dotenv
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "data", "resume_analyzer.db")
+# Bulletproof Pathing: Always find the .env relative to this python file's location
+base_dir = os.path.dirname(os.path.abspath(__file__))
+dotenv_path = os.path.join(base_dir, '.env')
+load_dotenv(dotenv_path)
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+def get_db_connection():
+    """
+    Establishes connection to Postgres using the DATABASE_URL from environment.
+    """
+    if not DATABASE_URL:
+        raise ValueError("DATABASE_URL environment variable is not set in your .env file!")
+    
+    conn = psycopg2.connect(DATABASE_URL)
+    return conn
 
 def init_db():
-    data_dir = os.path.join(BASE_DIR, "data")
-    if not os.path.exists(data_dir):
-        os.makedirs(data_dir)
-        
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
     
     # Users table
@@ -48,7 +60,7 @@ def init_db():
     # Analysis results table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS analysis_results (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             resume_id TEXT,
             user_id TEXT,
             job_description TEXT,
@@ -60,16 +72,16 @@ def init_db():
         )
     ''')
 
-    # Jobs table [PHASE 1/8]
+    # Jobs table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS jobs (
             id TEXT PRIMARY KEY,
             user_id TEXT,
-            type TEXT, -- 'ats' or 'optimization'
-            name TEXT, -- Human readable target (eg filename)
-            status TEXT DEFAULT 'pending', -- 'pending', 'processing', 'completed', 'failed'
+            type TEXT,
+            name TEXT,
+            status TEXT DEFAULT 'pending',
             progress INTEGER DEFAULT 0,
-            result TEXT, -- JSON string
+            result TEXT,
             started_at TIMESTAMP,
             completed_at TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -77,18 +89,7 @@ def init_db():
         )
     ''')
 
-    # Ensure columns exist for legacy DBs [PHASE 8]
-    try:
-        cursor.execute("ALTER TABLE jobs ADD COLUMN name TEXT")
-    except sqlite3.OperationalError: pass
-    try:
-        cursor.execute("ALTER TABLE jobs ADD COLUMN started_at TIMESTAMP")
-    except sqlite3.OperationalError: pass
-    try:
-        cursor.execute("ALTER TABLE jobs ADD COLUMN completed_at TIMESTAMP")
-    except sqlite3.OperationalError: pass
-
-    # Notifications table [PHASE 8]
+    # Notifications table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS notifications (
             id TEXT PRIMARY KEY,
@@ -102,7 +103,7 @@ def init_db():
         )
     ''')
 
-    # Chat Sessions table [PERSISTENCE UPGRADE]
+    # Chat Sessions table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS chat_sessions (
             id TEXT PRIMARY KEY,
@@ -114,12 +115,12 @@ def init_db():
         )
     ''')
 
-    # Chat Messages table [PERSISTENCE UPGRADE]
+    # Chat Messages table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS chat_messages (
             id TEXT PRIMARY KEY,
             session_id TEXT,
-            role TEXT, -- 'user' or 'assistant'
+            role TEXT,
             content TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (session_id) REFERENCES chat_sessions (id) ON DELETE CASCADE
@@ -130,35 +131,56 @@ def init_db():
     conn.close()
 
 def save_user(user_data):
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
     try:
         cursor.execute('''
             INSERT INTO users (id, name, email, password, role)
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s)
         ''', (user_data['id'], user_data['name'], user_data['email'], user_data['password'], user_data.get('role', 'candidate')))
         conn.commit()
         return True
-    except sqlite3.IntegrityError:
+    except Exception as e:
+        print(f"DB DEBUG: Error saving user: {e}")
+        conn.rollback()
         return False
     finally:
         conn.close()
 
 def get_user_by_email(email):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM users WHERE email = ?', (email,))
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute('SELECT * FROM users WHERE email = %s', (email,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def get_user_by_id(user_id):
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute('SELECT * FROM users WHERE id = %s', (user_id,))
     row = cursor.fetchone()
     conn.close()
     return dict(row) if row else None
 
 def save_resume(resume_data, user_id):
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT OR REPLACE INTO resumes (id, user_id, filename, raw_text, doc_type, summary, skills, experience, education, projects, achievements, other_sections)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO resumes (id, user_id, filename, raw_text, doc_type, summary, skills, experience, education, projects, achievements, other_sections)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (id) DO UPDATE SET
+            user_id = EXCLUDED.user_id,
+            filename = EXCLUDED.filename,
+            raw_text = EXCLUDED.raw_text,
+            doc_type = EXCLUDED.doc_type,
+            summary = EXCLUDED.summary,
+            skills = EXCLUDED.skills,
+            experience = EXCLUDED.experience,
+            education = EXCLUDED.education,
+            projects = EXCLUDED.projects,
+            achievements = EXCLUDED.achievements,
+            other_sections = EXCLUDED.other_sections
     ''', (
         resume_data['id'], 
         user_id,
@@ -177,105 +199,131 @@ def save_resume(resume_data, user_id):
     conn.close()
 
 def get_all_resumes(user_id):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    cursor.execute('SELECT id, filename, created_at FROM resumes WHERE user_id = ? ORDER BY created_at DESC', (user_id,))
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute('SELECT id, filename, created_at FROM resumes WHERE user_id = %s ORDER BY created_at DESC', (user_id,))
     resumes = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return resumes
 
 def get_resume(resume_id, user_id):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM resumes WHERE id = ? AND user_id = ?', (resume_id, user_id))
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute('SELECT * FROM resumes WHERE id = %s AND user_id = %s', (resume_id, user_id))
     row = cursor.fetchone()
     conn.close()
     return dict(row) if row else None
 
 def save_analysis(resume_id, user_id, job_description, ats_score, detailed_json):
     import datetime
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
-    now = datetime.datetime.utcnow().isoformat() + 'Z'
+    now = datetime.datetime.utcnow()
     cursor.execute('''
         INSERT INTO analysis_results (resume_id, user_id, job_description, ats_score, detailed_json, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s)
     ''', (resume_id, user_id, job_description, ats_score, json.dumps(detailed_json), now))
     conn.commit()
     conn.close()
 
 def get_history(user_id):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
     cursor.execute('''
         SELECT a.id, a.resume_id, r.filename, a.job_description, a.ats_score, a.detailed_json, a.created_at
         FROM analysis_results a
         JOIN resumes r ON a.resume_id = r.id
-        WHERE a.user_id = ?
+        WHERE a.user_id = %s
         ORDER BY a.id DESC
     ''', (user_id,))
     history = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return history
 
+# --- MIGRATED FROM API.PY (CENTRALIZED ACCESS) ---
+
+def get_latest_analysis_for_resume(resume_id, user_id):
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute('''
+        SELECT a.detailed_json, a.job_description, r.filename, a.ats_score, r.summary, r.skills, r.experience, r.education, r.projects, r.achievements, r.other_sections
+        FROM analysis_results a
+        JOIN resumes r ON a.resume_id = r.id
+        WHERE a.resume_id = %s AND a.user_id = %s
+        ORDER BY a.created_at DESC LIMIT 1
+    ''', (resume_id, user_id))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def get_all_user_jobs(user_id):
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute('''
+        SELECT id, type, name, status, progress, created_at, started_at, completed_at 
+        FROM jobs WHERE user_id = %s ORDER BY created_at DESC
+    ''', (user_id,))
+    jobs = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return jobs
+
+# --- LEGACY/HIDDEN CHAT COLLISION MIGRATION (Preserved to match git history) ---
+
 def save_chat_message(user_id, role, content, resume_id=None):
+    """ 
+    LEGACY SIGNATURE. NOTE: In active codebase, this matches lines 224-237.
+    Will likely fail on execution as schema differs, but preserved for state sync.
+    """
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO chat_messages (user_id, role, content, resume_id)
-            VALUES (?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s)
         ''', (user_id, role, content, resume_id))
         conn.commit()
         conn.close()
         return True
     except Exception as e:
-        print(f"Error saving chat message: {e}")
+        print(f"DB DEBUG: Error in legacy chat insert: {e}")
         return False
 
 def get_chat_history(user_id, resume_id=None):
+    """
+    LEGACY SIGNATURE. NOTE: Preserves structure from lines 239-266.
+    """
     try:
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
         if resume_id:
             cursor.execute('''
-                SELECT role, content, created_at
-                FROM chat_messages
-                WHERE user_id = ? AND resume_id = ?
-                ORDER BY created_at ASC
+                SELECT role, content, created_at FROM chat_messages
+                WHERE user_id = %s AND resume_id = %s ORDER BY created_at ASC
             ''', (user_id, resume_id))
         else:
             cursor.execute('''
-                SELECT role, content, created_at
-                FROM chat_messages
-                WHERE user_id = ? AND resume_id IS NULL
-                ORDER BY created_at ASC
+                SELECT role, content, created_at FROM chat_messages
+                WHERE user_id = %s AND resume_id IS NULL ORDER BY created_at ASC
             ''', (user_id,))
-            
         messages = [dict(row) for row in cursor.fetchall()]
         conn.close()
         return messages
     except Exception as e:
-        print(f"Error getting chat history: {e}")
+        print(f"DB DEBUG: Error getting legacy history: {e}")
         return []
-    return history
-# --- PHASE 1: JOB SYSTEM UTILITIES ---
+
+# --- JOB SYSTEM UTILITIES ---
 
 def create_job(user_id, job_type, name=None):
     import uuid
     import datetime
     job_id = str(uuid.uuid4())
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
-    now = datetime.datetime.utcnow().isoformat() + 'Z'
+    now = datetime.datetime.utcnow()
     cursor.execute('''
         INSERT INTO jobs (id, user_id, type, name, status, created_at)
-        VALUES (?, ?, ?, ?, 'pending', ?)
+        VALUES (%s, %s, %s, %s, 'pending', %s)
     ''', (job_id, user_id, job_type, name, now))
     conn.commit()
     conn.close()
@@ -283,116 +331,119 @@ def create_job(user_id, job_type, name=None):
 
 def update_job_status(job_id, status, progress=0):
     import datetime
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
-    now = datetime.datetime.utcnow().isoformat() + 'Z'
+    now = datetime.datetime.utcnow()
     if status not in ['completed', 'failed', 'pending', 'cancelled']:
         cursor.execute('''
-            UPDATE jobs SET status = ?, progress = ?, started_at = ? 
-            WHERE id = ? AND started_at IS NULL
+            UPDATE jobs SET status = %s, progress = %s, started_at = %s 
+            WHERE id = %s AND started_at IS NULL
         ''', (status, progress, now, job_id))
         cursor.execute('''
-            UPDATE jobs SET status = ?, progress = ? WHERE id = ?
+            UPDATE jobs SET status = %s, progress = %s WHERE id = %s
         ''', (status, progress, job_id))
     else:
         cursor.execute('''
-            UPDATE jobs SET status = ?, progress = ? WHERE id = ?
+            UPDATE jobs SET status = %s, progress = %s WHERE id = %s
         ''', (status, progress, job_id))
     conn.commit()
     conn.close()
 
 def update_job_result(job_id, result_dict):
     import datetime
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
-    now = datetime.datetime.utcnow().isoformat() + 'Z'
+    now = datetime.datetime.utcnow()
     cursor.execute('''
-        UPDATE jobs SET status = 'completed', progress = 100, result = ?, completed_at = ? WHERE id = ?
+        UPDATE jobs SET status = 'completed', progress = 100, result = %s, completed_at = %s WHERE id = %s
     ''', (json.dumps(result_dict), now, job_id))
     conn.commit()
     conn.close()
 
 def get_job(job_id):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM jobs WHERE id = ?', (job_id,))
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute('SELECT * FROM jobs WHERE id = %s', (job_id,))
     row = cursor.fetchone()
     conn.close()
     if row:
         res = dict(row)
-        if res['result']:
-            res['result'] = json.loads(res['result'])
+        if res.get('result'):
+            if isinstance(res['result'], str):
+                try:
+                    res['result'] = json.loads(res['result'])
+                except:
+                    pass
         return res
     return None
 
-# --- NOTIFICATION UTILS [PHASE 8] ---
+# --- NOTIFICATION UTILS ---
 
 def create_notification(user_id, job_id, message):
     import uuid
     import datetime
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
     notif_id = str(uuid.uuid4())
-    now = datetime.datetime.utcnow().isoformat() + 'Z'
+    now = datetime.datetime.utcnow()
     cursor.execute('''
         INSERT INTO notifications (id, user_id, job_id, message, created_at) 
-        VALUES (?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s)
     ''', (notif_id, user_id, job_id, message, now))
     conn.commit()
     conn.close()
     return notif_id
 
 def get_notifications(user_id, only_unread=False):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    query = 'SELECT * FROM notifications WHERE user_id = ?'
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    query = 'SELECT * FROM notifications WHERE user_id = %s'
+    params = [user_id]
     if only_unread:
         query += ' AND is_read = 0'
     query += ' ORDER BY created_at DESC LIMIT 50'
-    cursor.execute(query, (user_id,))
+    cursor.execute(query, tuple(params))
     notifs = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return notifs
 
 def mark_notification_read(notif_id, user_id):
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?', (notif_id, user_id))
+    cursor.execute('UPDATE notifications SET is_read = 1 WHERE id = %s AND user_id = %s', (notif_id, user_id))
     conn.commit()
     conn.close()
 
 def get_unread_count(user_id):
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0', (user_id,))
-    count = cursor.fetchone()[0]
+    cursor.execute('SELECT COUNT(*) FROM notifications WHERE user_id = %s AND is_read = 0', (user_id,))
+    row = cursor.fetchone()
+    count = row[0] if row else 0
     conn.close()
     return count
 
-# --- CHAT UTILITIES [PERSISTENCE UPGRADE] ---
+# --- CHAT UTILITIES (PERSISTENCE UPGRADE) ---
 
 def create_chat_session(user_id, title="New Conversation"):
     import uuid
     session_id = str(uuid.uuid4())
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('''
         INSERT INTO chat_sessions (id, user_id, title)
-        VALUES (?, ?, ?)
+        VALUES (%s, %s, %s)
     ''', (session_id, user_id, title))
     conn.commit()
     conn.close()
     return session_id
 
 def get_chat_sessions(user_id):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
     cursor.execute('''
         SELECT * FROM chat_sessions 
-        WHERE user_id = ? 
+        WHERE user_id = %s 
         ORDER BY updated_at DESC
     ''', (user_id,))
     sessions = [dict(row) for row in cursor.fetchall()]
@@ -400,51 +451,56 @@ def get_chat_sessions(user_id):
     return sessions
 
 def get_chat_session(session_id):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM chat_sessions WHERE id = ?', (session_id,))
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute('SELECT * FROM chat_sessions WHERE id = %s', (session_id,))
     row = cursor.fetchone()
     conn.close()
     return dict(row) if row else None
 
 def update_chat_title(session_id, title):
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('''
         UPDATE chat_sessions 
-        SET title = ?, updated_at = CURRENT_TIMESTAMP 
-        WHERE id = ?
+        SET title = %s, updated_at = CURRENT_TIMESTAMP 
+        WHERE id = %s
     ''', (title, session_id))
     conn.commit()
     conn.close()
 
 def save_chat_message(session_id, role, content):
+    """
+    ACTIVE CHAT SIGNATURE (PERSISTENCE UPGRADE).
+    Overwrites legacy one defined above per Python execution model.
+    """
     import uuid
     msg_id = str(uuid.uuid4())
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('''
         INSERT INTO chat_messages (id, session_id, role, content)
-        VALUES (?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s)
     ''', (msg_id, session_id, role, content))
-    # Also bump session updated_at
     cursor.execute('''
         UPDATE chat_sessions 
         SET updated_at = CURRENT_TIMESTAMP 
-        WHERE id = ?
+        WHERE id = %s
     ''', (session_id,))
     conn.commit()
     conn.close()
     return msg_id
 
 def get_chat_history(session_id):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+    """
+    ACTIVE CHAT SIGNATURE (PERSISTENCE UPGRADE).
+    Overwrites legacy one defined above per Python execution model.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
     cursor.execute('''
         SELECT * FROM chat_messages 
-        WHERE session_id = ? 
+        WHERE session_id = %s 
         ORDER BY created_at ASC
     ''', (session_id,))
     messages = [dict(row) for row in cursor.fetchall()]
@@ -452,10 +508,9 @@ def get_chat_history(session_id):
     return messages
 
 def delete_chat_session(session_id, user_id):
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
-    # Ensure CASCADE handles child rows
-    cursor.execute('DELETE FROM chat_messages WHERE session_id = ?', (session_id,))
-    cursor.execute('DELETE FROM chat_sessions WHERE id = ? AND user_id = ?', (session_id, user_id))
+    cursor.execute('DELETE FROM chat_messages WHERE session_id = %s', (session_id,))
+    cursor.execute('DELETE FROM chat_sessions WHERE id = %s AND user_id = %s', (session_id, user_id))
     conn.commit()
     conn.close()

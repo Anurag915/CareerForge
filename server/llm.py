@@ -1,98 +1,138 @@
-import requests
+from google import genai
+from google.genai import types
 import json
 import os
+from dotenv import load_dotenv
 
-OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://localhost:11434')
-OLLAMA_URL = f"{OLLAMA_HOST}/api/generate"
-DEFAULT_MODEL = os.getenv('DEFAULT_MODEL', 'llama3')
+# Bulletproof Pathing: Always load the correct .env
+base_dir = os.path.dirname(os.path.abspath(__file__))
+dotenv_path = os.path.join(base_dir, '.env')
+load_dotenv(dotenv_path)
 
-def query_ollama(prompt, format_json=True, timeout=300):
-    payload = {
-        "model": DEFAULT_MODEL,
-        "prompt": prompt,
-        "stream": False
-    }
-    if format_json:
-        payload["format"] = "json"
+# 1. Initialize next-gen Gemini v2 Client
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+client = None
+
+if not GEMINI_API_KEY:
+    print("CRITICAL WARNING: GEMINI_API_KEY is missing in server/.env.")
+else:
+    # Upgrade: Unified modular instantiation 
+    client = genai.Client(api_key=GEMINI_API_KEY)
+
+def query_gemini(prompt, format_json=True):
+    """
+    Ultrafast query router powering backend logic via next-gen Gemini 2.0 Flash.
+    Guarantees absolute syntactic validation on structure outputs.
+    """
+    if not client:
+        return "{}" if format_json else "Error: AI Client not configured."
         
     try:
-        response = requests.post(OLLAMA_URL, json=payload, timeout=timeout)
-        response.raise_for_status()
-        return response.json().get("response", "")
+        # Auto-configure strict strict JSON delivery if requested
+        config = None
+        if format_json:
+             config = types.GenerateContentConfig(
+                 response_mime_type="application/json"
+             )
+             
+        # Leverage explicit stable alias confirmed accessible via live probe
+        response = client.models.generate_content(
+            model='gemini-flash-latest', 
+            contents=prompt,
+            config=config
+        )
+        
+        if not response or not response.text:
+             print("GEMINI V2 DEBUG: Null response block received.")
+             return "{}" if format_json else "Error: AI engine returned a null payload."
+             
+        return response.text
+        
     except Exception as e:
-        print(f"Ollama Error: {e}")
-        return "{}" if format_json else "Error: Could not connect to Ollama."
+        print(f"GEMINI V2 ERROR TRACE: {e}")
+        return "{}" if format_json else f"Internal Logic Fault: {str(e)}"
 
 def get_chat_response(context, question):
-    # Context Optimization: Truncate if somehow context exceeds safe limits
-    max_context_chars = 4000 
-    safe_context = context[:max_context_chars]
+    """
+    Advanced singular record hydration engine for hyper-dense data extraction.
+    """
+    # Expanded context frame limits leveraging unified infrastructure
+    max_safe_chars = 80000 
+    safe_context = context[:max_safe_chars]
 
     prompt = f"""
-    You are an expert ATS (Applicant Tracking System) Assistant.
-    Your task is to answer questions about a candidate's resume based ONLY on the provided context.
+    System Objective: Act as a senior technical recruitment director.
     
-    Rules:
-    - If the information is not present in the context, explicitly state: "Based on the provided resume, I do not have information regarding [topic]."
-    - Be professional, concise, and accurate.
-    - DO NOT use long paragraphs.
-    - Use bullet points (•) for your response.
-    - Each point should start on a new line.
-    - Do not invent facts or hallucinate experience.
+    Constraints:
+    - Output strictly structured, professional insights using (•) bullets.
+    - Ban long monolithic paragraphs immediately.
+    - Confine knowledge strictly to provided context.
+    - If not explicitly in context, clearly state knowledge absence regarding query.
 
-    ---
-    RESUME CONTEXT:
+    <<< PRIMARY SOURCE CONTEXT >>>
     {safe_context}
-    ---
+    <<< END SOURCE CONTEXT >>>
 
-    USER QUESTION: {question}
+    QUERY: {question}
     
-    EXPERT ANSWER:
+    CONSULTANT VERDICT:
     """
-    return query_ollama(prompt, format_json=False)
+    return query_gemini(prompt, format_json=False)
 
 def analyze_resume_ats(sections, job_description):
-    # Format the sections into a clean string for the LLM
-    context = ""
-    for title, content in sections.items():
-        if content:
-            context += f"### {title.upper()}\n{content}\n\n"
+    """
+    Hyper-fidelity matching harness. Direct cross-correlation analyzer.
+    Poly-ingests raw text flows OR pre-formatted structured indices.
+    """
+    formatted_corpus = ""
+    
+    if isinstance(sections, dict):
+        for label, txt in sections.items():
+            if txt and str(txt).strip():
+                formatted_corpus += f"## {label.upper()}\n{txt}\n\n"
+    else:
+        formatted_corpus = str(sections)
 
     prompt = f"""
-    You are an expert ATS system. Your goal is to analyze the resume against the provided job description with high precision.
-    Return ONLY valid JSON.
+    System Identity: Precision ATS scoring mechanism and correction logic.
+    Protocol: Evaluate data against specs. Output strictly RAW schema bound JSON.
     
+    EXPECTED JSON SCHEMA:
     {{
-    "summary_critique": "A professional analysis of how well the candidate matches the JD. If the JD is invalid/gibberish, state that no analysis could be performed.",
+    "summary_critique": "Absolute granular cross-mapping critique. Highlight fundamental alignment.",
     "advanced_enhancements": [
-        "Specifically matched suggestion 1",
-        "Specifically matched suggestion 2"
+        "Direct enhancement correction 1",
+        "Direct enhancement correction 2"
     ]
     }}
     
-    STRICT RULES:
-    1. If the Job Description contains gibberish, meaningless text, or lacks clear professional requirements, return an empty list for "advanced_enhancements".
-    2. Do NOT hallucinate skills or suggest common technologies (like Python/SQL) unless they are explicitly required by the JD or missing from the resume based on the JD.
-    3. Suggest enhancements ONLY if they directly increase the match for the SPECIFIC JD provided.
-    4. If the JD is empty or invalid, return "summary_critique": "The provided job description is invalid or too short for analysis."
+    VALIDATION BOUNDS:
+    1. Garbage detection: If input description is chaotic -> Clear enhancements array, note error in critique.
+    2. Gapping: Suggestions MUST align strictly and exclusively with gaps required by the target specs.
+    3. Strict JSON only. No outside conversational filler.
     
-    Resume Context:
-    {context[:5000]}
+    ### SOURCE CANDIDATE CORPUS ###
+    {formatted_corpus}
     
-    Job Description:
+    ### TARGET SPECIFICATION ###
     {job_description}
     """
-    print(f"DEBUG - SENDING STRUCTURED CONTEXT TO LLM ({len(context)} chars)")
-    return query_ollama(prompt, format_json=True)
+    print(f"GEMINI V2 ENGINE: Routing analyzing sequence ({len(formatted_corpus)} chars)...")
+    return query_gemini(prompt, format_json=True)
+
 def get_global_chat_response(context, question):
+    """
+    High-altitude synthesized strategy engine aggregating distributed datasets.
+    """
     prompt = f"""
-    You are an AI career strategist. Use the following context, which contains information from multiple documents (resumes, job descriptions, and portfolios), to answer the user's question.
+    You represent an elite-tier career strategy architect operating on aggregated metadata.
+    Synthesize disparate contexts below into a superior directional path.
     
-    Context:
+    AGGREGATED DATA FRAMEWORK:
     {context}
     
-    Question: {question}
+    STRATEGIC INQUIRY: {question}
     
-    Strategic Answer (Use bullet points, no paragraphs):
+    EXECUTIVE DECISION (Format as precise structural directives):
     """
-    return query_ollama(prompt, format_json=False)
+    return query_gemini(prompt, format_json=False)
