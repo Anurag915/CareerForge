@@ -54,7 +54,8 @@ def dispatch_job(job_func, job_id, data, user_id):
     Hooks into Celery if REDIS_URL is provisioned, otherwise seamlessly cascades
     into a native Python Thread (No-Budget Infrastructure for Cloud Free Tiers!).
     """
-    if os.getenv('REDIS_URL'):
+    is_render = os.getenv('RENDER') == 'true'
+    if os.getenv('REDIS_URL') and not is_render:
         job_func.apply_async(args=[job_id, data, user_id], task_id=job_id)
     else:
         import threading
