@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
+import api from '../services/api';
 import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
 import ResultCard from './ResultCard';
 
@@ -18,7 +18,7 @@ const AnalysisPage = () => {
         const fetchAnalysis = async () => {
             try {
                 setLoading(true);
-                const response = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/resume/${id}`);
+                const response = await api.get(`/resume/${id}`);
                 console.log("DEBUG - ANALYSIS DATA RECEIVED:", response.data);
                 setData(response.data);
                 setLoading(false);

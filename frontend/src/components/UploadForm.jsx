@@ -1,21 +1,33 @@
 import { useState, useRef, useCallback, useMemo } from "react";
-import { Sparkles } from "lucide-react";
+import { Sparkles, UploadCloud, FileText, X, AlertCircle, Loader2, ArrowRight, Trash2, CheckCircle2, User, ShieldCheck, Zap, Layers, Play } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  UploadCloud,
-  FileText,
-  X,
-  AlertCircle,
-  Loader2,
-  ArrowRight,
-  Trash2,
-  CheckCircle2,
-  User,
-  ShieldCheck,
-  Zap,
-} from "lucide-react";
-import axios from "axios";
+import api from "../services/api";
+import { toast } from "sonner";
+
+// Pre-defined high-quality Job Description templates for recruiters/hiring managers
+const JD_TEMPLATES = [
+  {
+    id: "swe",
+    label: "⚡ Software Engineer",
+    description: "We are seeking a Full Stack Software Engineer experienced in React, Node.js, and TypeScript. You will build highly responsive web applications, design secure REST/GraphQL APIs, and optimize database schemas using PostgreSQL and MongoDB. The ideal candidate has 3+ years of experience, understands CI/CD pipelines, Docker, and possesses strong unit testing standards."
+  },
+  {
+    id: "designer",
+    label: "🎨 Product Designer",
+    description: "Looking for a Senior Product Designer to craft intuitive, user-centric interfaces. You will translate complex user workflows into beautiful wireframes, mockups, and high-fidelity interactive prototypes using Figma. Must have 4+ years of UX/UI design experience, a solid portfolio demonstrating product design systems, user research methodologies, and close collaboration with frontend developers."
+  },
+  {
+    id: "analyst",
+    label: "📊 Data Scientist",
+    description: "We are hiring a Data Scientist to build predictive machine learning models and extract insights from complex datasets. Candidates must have expertise in Python, SQL, pandas, scikit-learn, and PyTorch. You will design A/B experiments, create business dashboards, and deploy production ML models. 3+ years of experience in data modeling or quantitative analytics is required."
+  },
+  {
+    id: "pm",
+    label: "🚀 Product Manager",
+    description: "Seeking a Technical Product Manager to drive product roadmap execution from discovery to launch. You will write detailed PRDs, coordinate cross-functionally across design and engineering teams, analyze user telemetry data, and define success metrics. Ideal candidates have 3+ years of product management experience inside modern SaaS ecosystems."
+  }
+];
 
 // Utility for human-readable file sizes
 const formatFileSize = (bytes) => {
@@ -32,7 +44,6 @@ const UploadForm = ({ onUpload, isLoading, processingQueue = [] }) => {
   const [jobDescription, setJobDescription] = useState("");
   const [error, setError] = useState("");
   const [isDragging, setIsDragging] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1);
   const [isJdValidating, setIsJdValidating] = useState(false);
   const [isJdValidated, setIsJdValidated] = useState(false);
   const fileInputRef = useRef(null);
@@ -40,6 +51,13 @@ const UploadForm = ({ onUpload, isLoading, processingQueue = [] }) => {
   // Constants for validation
   const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
   const ALLOWED_TYPE = "application/pdf";
+
+  const handleSelectTemplate = (template) => {
+    setJobDescription(template.description);
+    setIsJdValidated(true);
+    setError("");
+    toast.success(`Loaded "${template.label.split(" ").slice(1).join(" ")}" requirements template!`);
+  };
 
   const validateAndAddFiles = useCallback(
     (newFiles) => {
@@ -111,11 +129,7 @@ const UploadForm = ({ onUpload, isLoading, processingQueue = [] }) => {
     setError("");
     
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/validate-jd`, 
-        { job_description: jobDescription },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.post("/validate-jd", { job_description: jobDescription });
       setIsJdValidated(true);
     } catch (err) {
       setError(err.response?.data?.error || "Validation failed. The job description might be too short or invalid.");
@@ -128,7 +142,7 @@ const UploadForm = ({ onUpload, isLoading, processingQueue = [] }) => {
   const handleCancelTask = async (taskId) => {
     if (!window.confirm("Abort this processing task?")) return;
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/job/${taskId}/cancel`);
+      await api.post(`/api/job/${taskId}/cancel`);
     } catch (e) {
       console.error("Failed to issue cancel command.");
     }
@@ -144,299 +158,197 @@ const UploadForm = ({ onUpload, isLoading, processingQueue = [] }) => {
       setFiles([]);
       setJobDescription("");
       setIsJdValidated(false);
-      setCurrentStep(1);
     } catch (err) {
-      // Parent handleUpload sets error in global app level usually, 
+      // Parent handleUpload sets error in global app level usually,
       // but local wrapper protects component resets
     }
   };
-
-  const steps = [
-    { id: 1, label: "Upload", icon: UploadCloud },
-    { id: 2, label: "Requirements", icon: FileText },
-    { id: 3, label: "Review", icon: CheckCircle2 },
-  ];
-
-  const nextStep = () => setCurrentStep((prev) => Math.min(prev + 1, 3));
-  const prevStep = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="w-full mx-auto"
+      className="w-full mx-auto space-y-8"
     >
-      <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl sm:rounded-[32px] shadow-2xl overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl overflow-hidden p-6 sm:p-10">
         
-        {/* Responsive Step Indicator */}
-        <div className="px-6 sm:px-10 py-6 sm:py-8 border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between max-w-3xl mx-auto relative gap-6 md:gap-4">
-            
-            {/* Desktop Connecting Line */}
-            <div className="absolute top-5 left-0 w-full h-0.5 bg-slate-100 dark:bg-slate-800 -translate-y-1/2 z-0 hidden md:block" />
-            <motion.div 
-              className="absolute top-5 left-0 h-0.5 bg-blue-500 -translate-y-1/2 z-0 hidden md:block"
-              initial={{ width: "0%" }}
-              animate={{ width: `${(currentStep - 1) * 50}%` }}
-            />
-
-            {steps.map((s, i) => (
-              <div key={s.id} className="relative z-10 flex flex-row md:flex-col items-center gap-4 md:gap-0 w-full md:w-auto">
-                <motion.div 
-                  animate={{ 
-                    scale: currentStep >= s.id ? 1 : 0.9,
-                    backgroundColor: currentStep >= s.id ? "#3b82f6" : "#f1f5f9"
-                  }}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center border-4 shrink-0 ${currentStep >= s.id ? "border-blue-100 dark:border-blue-900 text-white shadow-lg shadow-blue-500/20" : "border-white dark:border-slate-900 text-slate-400 dark:bg-slate-800"}`}
-                >
-                  {currentStep > s.id ? <CheckCircle2 className="w-5 h-5" /> : <s.icon className="w-4 h-4" />}
-                </motion.div>
-                
-                <div className="flex flex-col md:items-center">
-                  <span className={`text-[13px] font-black tracking-widest md:mt-3 ${currentStep >= s.id ? "text-slate-900 dark:text-white" : "text-slate-400"}`}>
-                    {s.label}
-                  </span>
-                  <span className="text-[10px] text-slate-400 md:hidden">Step 0{s.id}</span>
-                </div>
-
-                {/* Mobile Connecting Line (Vertical) */}
-                {i < steps.length - 1 && (
-                  <div className={`absolute top-10 left-5 w-0.5 h-6 -z-10 md:hidden ${currentStep > s.id ? "bg-blue-500" : "bg-slate-100 dark:bg-slate-800"}`} />
-                )}
-              </div>
-            ))}
+        {/* Workspace Title & Stats Banner */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-6 mb-8 gap-4">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+              <Layers className="w-5 h-5 text-blue-500" />
+              AI Match Workspace
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">Configure your candidate matching pipeline in a single professional screen.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="px-3.5 py-1.5 bg-slate-100/50 dark:bg-slate-800/50 rounded-xl text-xs font-bold text-slate-500 dark:text-slate-400 border border-slate-200/20">
+              Resumes: <span className="text-blue-500 font-extrabold">{files.length}</span>
+            </div>
+            <div className="px-3.5 py-1.5 bg-slate-100/50 dark:bg-slate-800/50 rounded-xl text-xs font-bold text-slate-500 dark:text-slate-400 border border-slate-200/20">
+              Target JD: <span className={isJdValidated ? "text-emerald-500 font-extrabold" : "text-amber-500 font-extrabold"}>{isJdValidated ? "Locked" : "Pending"}</span>
+            </div>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-0">
-          <div className="min-h-[400px] sm:min-h-[500px] flex flex-col">
-            <AnimatePresence mode="wait">
-              {currentStep === 1 && (
-                <motion.div
-                  key="step1"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="p-6 sm:p-10 flex-grow"
-                >
-                  <div className="max-w-3xl mx-auto space-y-6 sm:space-y-8">
-                    <div className="text-center space-y-2">
-                      <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Upload Candidate Profiles</h3>
-                      <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm">PDF format supported • Max 5MB per file</p>
-                    </div>
+        <form onSubmit={handleSubmit} className="space-y-8 divide-y divide-slate-100 dark:divide-slate-800/60">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch divide-y lg:divide-y-0 lg:divide-x divide-slate-100 dark:divide-slate-800/60">
+            
+            {/* Left Panel: Job Description (Col span 5) */}
+            <div className="lg:col-span-5 flex flex-col space-y-4 lg:pr-8">
+              <div className="space-y-1">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 block">1. Job Context</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Select a template below or paste requirements to align the AI.</p>
+              </div>
 
-                    <div
-                      onDragEnter={handleDrag}
-                      onDragOver={handleDrag}
-                      onDragLeave={handleDrag}
-                      onDrop={handleDrop}
-                      onClick={() => fileInputRef.current.click()}
-                      className={`
-                        relative min-h-[250px] sm:min-h-[300px] border-2 border-dashed rounded-2xl sm:rounded-[32px] transition-all duration-500
-                        flex flex-col items-center justify-center cursor-pointer group overflow-hidden px-4
-                        ${isDragging ? "border-blue-500 bg-blue-50/50 dark:bg-blue-500/5" : "border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-600 bg-slate-50/20 dark:bg-slate-900/50 shadow-inner"}
-                      `}
-                    >
-                      <input type="file" className="hidden" accept=".pdf" multiple onChange={(e) => validateAndAddFiles(e.target.files)} ref={fileInputRef} />
-                      <div className={`p-4 sm:p-6 rounded-2xl sm:rounded-[24px] mb-4 transition-all duration-500 group-hover:scale-110 ${isDragging ? "bg-blue-500 text-white shadow-xl shadow-blue-500/20" : "bg-white dark:bg-slate-800 text-slate-400 shadow-sm"}`}>
-                        <UploadCloud className="w-8 h-8 sm:w-12 sm:h-12" />
-                      </div>
-                      <p className="text-base sm:text-lg font-bold text-slate-900 dark:text-white text-center">Drop Resumes Here</p>
-                      <p className="text-xs sm:text-sm text-slate-500 mt-1 text-center">or click to browse local files</p>
-                    </div>
+              {/* Quick AI Templates capsules */}
+              <div className="flex flex-wrap gap-2 py-1">
+                {JD_TEMPLATES.map((tmpl) => (
+                  <button
+                    key={tmpl.id}
+                    type="button"
+                    onClick={() => handleSelectTemplate(tmpl)}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 active:bg-slate-100 cursor-pointer dark:bg-slate-900 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-850 dark:hover:text-slate-200 dark:hover:border-slate-700"
+                  >
+                    {tmpl.label}
+                  </button>
+                ))}
+              </div>
 
-                    {files.length > 0 && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                        {files.map((file, idx) => (
-                          <div key={idx} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-xl sm:rounded-2xl group hover:border-blue-500/30 transition-all">
-                            <div className="p-2 bg-white dark:bg-slate-900 rounded-lg sm:rounded-xl text-blue-500 shadow-sm"><FileText className="w-4 h-4" /></div>
-                            <span className="text-xs sm:text-sm font-bold truncate flex-1 text-slate-700 dark:text-slate-300">{file.name}</span>
-                            <button 
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); removeFile(idx); }} 
-                              className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+              <div className="relative flex-grow flex flex-col min-h-[250px]">
+                <textarea
+                  value={jobDescription}
+                  onChange={(e) => handleJdChange(e.target.value)}
+                  placeholder="Paste target job requirements here (min 50 characters)..."
+                  className="w-full flex-grow p-4 sm:p-5 rounded-2xl border outline-none resize-none shadow-inner font-mono text-xs leading-relaxed transition-all duration-300 bg-slate-50/50 dark:bg-slate-950/40 border-slate-300 dark:border-slate-700 focus:border-slate-400 dark:focus:border-slate-600 text-slate-800 dark:text-slate-200"
+                />
+                <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                  <div className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg bg-slate-100/80 dark:bg-slate-800/80 text-slate-500 border border-slate-200/10 backdrop-blur-sm">
+                    {jobDescription.length} chars
                   </div>
-                </motion.div>
-              )}
+                </div>
+              </div>
 
-              {currentStep === 2 && (
-                <motion.div
-                  key="step2"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="p-6 sm:p-10 flex-grow"
-                >
-                  <div className="max-w-3xl mx-auto space-y-6 sm:space-y-8">
-                    <div className="text-center space-y-2">
-                      <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Job Requirements</h3>
-                      <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm">Paste the description to enable semantic matching.</p>
-                    </div>
-
-                    <div className="relative group">
-                      <textarea
-                        value={jobDescription}
-                        onChange={(e) => handleJdChange(e.target.value)}
-                        placeholder="Paste job description here..."
-                        className={`w-full min-h-[250px] sm:min-h-[320px] p-6 sm:p-8 rounded-2xl sm:rounded-[32px] border transition-all outline-none resize-none shadow-inner leading-relaxed text-xs sm:text-sm
-                          ${isJdValidated 
-                            ? "bg-emerald-50/10 dark:bg-emerald-950/20 border-emerald-500/30 ring-4 ring-emerald-500/5 text-slate-900 dark:text-slate-100" 
-                            : "border-slate-200 dark:border-slate-800 bg-slate-50/10 dark:bg-slate-950/50 text-slate-900 dark:text-slate-100 focus:ring-4 focus:ring-blue-500/5"}
-                        `}
-                      />
-                      <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-8 flex items-center gap-3">
-                        {isJdValidated && (
-                          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 text-white rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20 animate-in fade-in zoom-in">
-                            <CheckCircle2 className="w-3 h-3" />
-                            Verified
-                          </div>
-                        )}
-                        <div className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border shadow-sm ${jobDescription.length > 100 ? "bg-white dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700" : "bg-white dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700"}`}>
-                          {jobDescription.length} chars
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col items-center gap-4">
-                      {!isJdValidated ? (
-                        <button
-                          type="button"
-                          onClick={handleValidateJd}
-                          disabled={isJdValidating || jobDescription.trim().length < 50}
-                          className="flex items-center gap-3 px-8 py-4 bg-slate-900 dark:bg-accent-600 text-white rounded-2xl font-bold shadow-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale disabled:hover:scale-100"
-                        >
-                          {isJdValidating ? (
-                            <>
-                              <Loader2 className="w-5 h-5 animate-spin" />
-                              <span>Validating Requirements...</span>
-                            </>
-                          ) : (
-                            <>
-                              <ShieldCheck className="w-5 h-5" />
-                              <span>Validate Job Description</span>
-                            </>
-                          )}
-                        </button>
-                      ) : (
-                        <div className="flex items-center gap-2 text-emerald-500 font-bold text-sm animate-in slide-in-from-bottom-2">
-                          <CheckCircle2 className="w-5 h-5" />
-                          <span>Ready to proceed!</span>
-                        </div>
-                      )}
-                      
-                      {error && (
-                        <motion.div 
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          className="text-red-500 text-xs font-bold bg-red-50 dark:bg-red-500/10 px-4 py-2 rounded-xl border border-red-100 dark:border-red-500/20"
-                        >
-                          {error}
-                        </motion.div>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-
-              {currentStep === 3 && (
-                <motion.div
-                  key="step3"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="p-6 sm:p-10 flex-grow"
-                >
-                  <div className="max-w-3xl mx-auto space-y-6 sm:space-y-8">
-                    <div className="text-center space-y-2">
-                      <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Ready for Analysis</h3>
-                      <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm">Review campaign details before launching the AI engine.</p>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                      <div className="p-5 sm:p-6 rounded-2xl sm:rounded-[24px] bg-blue-50/50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-900/30 space-y-3 sm:space-y-4">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-blue-500 text-white rounded-lg"><User className="w-4 h-4" /></div>
-                          <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Candidates</span>
-                        </div>
-                        <p className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white">{files.length}</p>
-                        <p className="text-[10px] sm:text-xs text-slate-500 font-medium">Verified documents loaded</p>
-                      </div>
-                      <div className="p-5 sm:p-6 rounded-2xl sm:rounded-[24px] bg-emerald-50/50 dark:bg-emerald-500/5 border border-emerald-100 dark:border-emerald-900/30 space-y-3 sm:space-y-4">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-emerald-500 text-white rounded-lg"><FileText className="w-4 h-4" /></div>
-                          <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Requirements</span>
-                        </div>
-                        <p className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white">{Math.round(jobDescription.length / 5.5)}</p>
-                        <p className="text-[10px] sm:text-xs text-slate-500 font-medium">Estimated word count</p>
-                      </div>
-                    </div>
-
-                    <div className="p-5 sm:p-6 rounded-2xl sm:rounded-[24px] bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center gap-4">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center text-blue-500 shadow-sm border border-slate-100 dark:border-slate-800 shrink-0"><Sparkles className="w-5 h-5 sm:w-6 sm:h-6" /></div>
-                      <div>
-                        <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">AI Engine: GPT-4 High Precision</p>
-                        <p className="text-[10px] sm:text-xs text-slate-500 font-medium">Semantic matching and scoring active.</p>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Responsive Footer Navigation */}
-            <div className="px-6 sm:px-10 py-6 sm:py-8 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30 flex flex-col sm:flex-row items-center justify-between gap-4 mt-auto">
-              <button
-                type="button"
-                onClick={prevStep}
-                disabled={currentStep === 1 || isLoading}
-                className={`w-full sm:w-auto px-6 py-3 rounded-xl text-xs font-bold transition-all ${currentStep === 1 ? "hidden" : "text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-800 shadow-sm border border-transparent hover:border-slate-200 dark:hover:border-slate-700"}`}
-              >
-                Back to {currentStep === 2 ? "Upload" : "Requirements"}
-              </button>
-
-              <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto ml-auto">
-                {currentStep < 3 ? (
+              <div className="flex flex-col items-stretch gap-2.5">
+                {!isJdValidated ? (
                   <button
                     type="button"
-                    onClick={nextStep}
-                    disabled={
-                      (currentStep === 1 && files.length === 0) || 
-                      (currentStep === 2 && !isJdValidated) || 
-                      isLoading
-                    }
-                    className="w-full sm:w-auto px-8 py-3.5 bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-xl text-xs font-bold shadow-lg hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:grayscale disabled:hover:scale-100 transition-all flex items-center justify-center gap-2 border border-slate-900 dark:border-white shadow-slate-900/10"
+                    onClick={handleValidateJd}
+                    disabled={isJdValidating || jobDescription.trim().length < 50}
+                    className="flex items-center justify-center gap-2.5 px-6 py-3.5 bg-slate-900 dark:bg-slate-850 hover:bg-slate-800 dark:hover:bg-slate-800 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg transition-all disabled:opacity-50 disabled:grayscale cursor-pointer active:scale-98"
                   >
-                    <span>Continue to {currentStep === 1 ? "Job Requirements" : "Review"}</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                ) : (
-                  <button
-                    type="submit"
-                    disabled={!isFormValid || isLoading}
-                    className="w-full sm:w-auto px-10 py-4 bg-emerald-500 text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-emerald-500/20 hover:bg-emerald-600 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale disabled:hover:scale-100 flex items-center justify-center gap-3"
-                  >
-                    {isLoading ? (
+                    {isJdValidating ? (
                       <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Starting Analysis...</span>
+                        <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                        <span>Verifying Requirements...</span>
                       </>
                     ) : (
                       <>
-                        <Zap className="w-4 h-4 fill-current" />
-                        <span>Launch AI Analysis</span>
+                        <ShieldCheck className="w-4 h-4 text-blue-500" />
+                        <span>Validate Requirements</span>
                       </>
                     )}
                   </button>
+                ) : (
+                  <div className="flex items-center justify-center gap-2 p-3 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold shadow-inner">
+                    <CheckCircle2 className="w-4 h-4 text-slate-400" />
+                    <span>Target Locked & Validated</span>
+                  </div>
                 )}
               </div>
             </div>
+
+            {/* Right Panel: Resumes Drag & Drop (Col span 7) */}
+            <div className="lg:col-span-7 flex flex-col space-y-4 lg:pl-8 pt-8 lg:pt-0">
+              <div className="space-y-1">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 block">2. Candidate Resumes</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Load PDF documents of the applicants to match.</p>
+              </div>
+
+              <div
+                onDragEnter={handleDrag}
+                onDragOver={handleDrag}
+                onDragLeave={handleDrag}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current.click()}
+                className={`
+                  relative flex-grow min-h-[220px] border-2 border-dashed rounded-2xl sm:rounded-3xl transition-all duration-300
+                  flex flex-col items-center justify-center cursor-pointer group px-6 py-8 overflow-hidden select-none
+                  ${isDragging 
+                    ? "border-blue-500 bg-blue-500/[0.04] dark:bg-blue-500/[0.02] scale-[0.99]" 
+                    : "border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-600 bg-slate-50/20 dark:bg-slate-900/40 shadow-inner"}
+                `}
+              >
+                <input type="file" className="hidden" accept=".pdf" multiple onChange={(e) => validateAndAddFiles(e.target.files)} ref={fileInputRef} />
+                <div className={`p-4 rounded-2xl mb-3.5 transition-all duration-500 group-hover:scale-110 ${isDragging ? "bg-blue-500 text-white shadow-xl shadow-blue-500/25" : "bg-white dark:bg-slate-850 text-slate-400 shadow-sm border border-slate-100 dark:border-slate-800"}`}>
+                  <UploadCloud className="w-8 h-8 text-blue-500" />
+                </div>
+                <p className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white text-center">Drop Resumes Here</p>
+                <p className="text-xs text-slate-500 mt-1 text-center font-semibold">or click to browse local files (PDF up to 5MB)</p>
+              </div>
+
+              {/* Added Files Section */}
+              {files.length > 0 && (
+                <div className="max-h-[160px] overflow-y-auto pr-1 space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {files.map((file, idx) => (
+                      <div key={idx} className="flex items-center gap-2.5 p-2.5 bg-slate-50/60 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800 rounded-xl group hover:border-blue-500/20 transition-all">
+                        <div className="p-1.5 bg-white dark:bg-slate-900 rounded-lg text-blue-500 shadow-sm border border-slate-100 dark:border-slate-800/50"><FileText className="w-3.5 h-3.5" /></div>
+                        <div className="truncate flex-1 min-w-0">
+                          <p className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">{file.name}</p>
+                          <p className="text-[9px] text-slate-400 font-medium">{formatFileSize(file.size)}</p>
+                        </div>
+                        <button 
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); removeFile(idx); }} 
+                          className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all shrink-0 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Action Orchestration Banner */}
+          <div className="border-t border-slate-150 dark:border-slate-800/60 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex-1">
+              {error ? (
+                <motion.div 
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-red-500 text-xs font-extrabold bg-red-500/5 border border-red-500/15 rounded-xl px-4 py-2.5 flex items-center gap-2 max-w-lg animate-pulse"
+                >
+                  <AlertCircle className="w-4 h-4 text-red-500" />
+                  <span>{error}</span>
+                </motion.div>
+              ) : (
+                <p className="text-xs text-slate-400 dark:text-slate-500 font-medium leading-normal max-w-md">
+                  Once your requirements are validated and candidate documents are enqueued, launch the campaign to evaluate profiles.
+                </p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              disabled={!isFormValid || isLoading}
+              className="w-full md:w-auto px-10 py-4 bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-slate-200 text-white dark:text-slate-900 border border-slate-900 dark:border-slate-100 disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-550 disabled:border-transparent rounded-xl font-semibold text-xs tracking-wide transition-all shadow-sm flex items-center justify-center gap-3 active:scale-95 cursor-pointer disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <span>Initializing Analysis...</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 fill-current text-white" />
+                  <span>Launch AI Match Campaign ({files.length})</span>
+                </>
+              )}
+            </button>
           </div>
         </form>
       </div>
@@ -458,12 +370,10 @@ const UploadForm = ({ onUpload, isLoading, processingQueue = [] }) => {
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Watch AI process your professional documents in real-time.</p>
               </div>
-              <span className="text-[10px] font-black uppercase tracking-wider px-3 py-1 bg-blue-500/10 text-blue-500 rounded-full animate-pulse">
-                Active Queue
-              </span>
+              <span className="text-[10px] font-black uppercase tracking-wider px-3 py-1 bg-blue-500/10 text-blue-500 rounded-full animate-pulse">Active Queue</span>
             </div>
 
-            <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {processingQueue
                 .filter(t => !['completed', 'failed', 'cancelled'].includes(t.status))
                 .map((task) => {
@@ -477,7 +387,7 @@ const UploadForm = ({ onUpload, isLoading, processingQueue = [] }) => {
                   ];
 
                   return (
-                    <div key={task.id} className="bg-white dark:bg-slate-950 border border-slate-150 dark:border-slate-800/80 rounded-2xl p-5 space-y-4 shadow-sm theme-transition">
+                    <div key={task.id} className="bg-slate-50/50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex flex-col justify-between space-y-3 shadow-sm theme-transition">
                       <div className="flex items-center justify-between">
                         <div className="truncate max-w-[70%]">
                           <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">File Analysis</h4>
@@ -519,14 +429,12 @@ const UploadForm = ({ onUpload, isLoading, processingQueue = [] }) => {
                                   <div className="w-2 h-2 rounded-full bg-slate-200 dark:bg-slate-800" />
                                 )}
                               </div>
-                              <span className={step.check ? "text-slate-500 dark:text-slate-400 line-through decoration-slate-300 dark:decoration-slate-700" : step.active ? "text-blue-500 font-bold" : "text-slate-400"}>
+                              <span className={step.check ? "text-slate-400 dark:text-slate-500 font-medium" : step.active ? "text-blue-500 font-bold" : "text-slate-400"}>
                                 {step.label}
                               </span>
                             </div>
                             {step.active && (
-                              <span className="text-[10px] text-blue-500 font-bold uppercase tracking-widest animate-pulse">
-                                Processing
-                              </span>
+                              <span className="text-[10px] text-blue-500 font-bold uppercase tracking-widest animate-pulse">Processing</span>
                             )}
                           </div>
                         ))}

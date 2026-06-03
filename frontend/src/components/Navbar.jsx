@@ -36,9 +36,7 @@ const Navbar = ({ activeTab, onTabClick, user, logout, processingQueue = [] }) =
     const { data: unreadCountData } = useQuery({
         queryKey: ['unread-count', user?.user_id],
         queryFn: async () => {
-            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/notifications/unread-count`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
+            const res = await api.get('/api/notifications/unread-count');
             return res.data.count;
         },
         enabled: !!user,
@@ -50,9 +48,7 @@ const Navbar = ({ activeTab, onTabClick, user, logout, processingQueue = [] }) =
     const { data: notifications = [], refetch: fetchNotifications } = useQuery({
         queryKey: ['notifications', user?.user_id],
         queryFn: async () => {
-            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/notifications`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
+            const res = await api.get('/api/notifications');
             return res.data;
         },
         enabled: !!user && notifOpen, // Laziness saves tremendous backend IO
@@ -61,9 +57,7 @@ const Navbar = ({ activeTab, onTabClick, user, logout, processingQueue = [] }) =
     // Mark Read Mutation
     const markReadMutation = useMutation({
         mutationFn: async (id) => {
-            await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/notifications/${id}/read`, {}, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
+            await api.post(`/api/notifications/${id}/read`, {});
         },
         onSuccess: () => {
             // Fully clear query cache ensuring badge count and dropdown stay perfectly synced!
@@ -121,31 +115,16 @@ const Navbar = ({ activeTab, onTabClick, user, logout, processingQueue = [] }) =
                     onTabClick(item.id);
                     if (isMobile) setIsMobileMenuOpen(false);
                 }}
-                className={`relative flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 group
+                className={`relative flex items-center space-x-2 px-4 py-2 rounded-xl transition-all duration-300 group text-sm font-semibold select-none
                     ${isActive 
-                        ? 'text-blue-700 dark:text-blue-400 shadow-sm' 
-                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                        ? 'text-blue-600 dark:text-blue-400 bg-blue-500/10 dark:bg-blue-500/10 border border-blue-500/20 dark:border-blue-500/30 shadow-[0_4px_12px_rgba(59,130,246,0.06)]' 
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/50 dark:hover:bg-slate-800/40 border border-transparent'
                     }
-                    ${isMobile ? 'w-full justify-start py-4 text-base' : ''}
+                    ${isMobile ? 'w-full justify-start py-3 text-base' : ''}
                 `}
             >
-                {/* Sliding Background Active Pill */}
-                {!isMobile && isActive && (
-                    <motion.div
-                        layoutId="nav-active-pill"
-                        className="absolute inset-0 bg-blue-50 dark:bg-blue-900/30 border border-blue-200/50 dark:border-blue-800/50 rounded-xl -z-10"
-                        initial={false}
-                        transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                    />
-                )}
-                
-                <item.icon className={`w-5 h-5 transition-transform duration-300 group-hover:scale-110 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'opacity-70'}`} />
-                <span className="relative z-10">{item.label}</span>
-
-                {/* Subtle Hover Glow for inactive only */}
-                {!isMobile && !isActive && (
-                    <div className="absolute inset-0 bg-slate-100 dark:bg-slate-800/50 opacity-0 group-hover:opacity-100 rounded-xl -z-10 transition-opacity duration-200" />
-                )}
+                <item.icon className={`w-4 h-4 transition-transform duration-300 group-hover:scale-110 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300'}`} />
+                <span>{item.label}</span>
             </button>
         );
     };
@@ -157,10 +136,10 @@ const Navbar = ({ activeTab, onTabClick, user, logout, processingQueue = [] }) =
                 : 'bg-transparent'
             }
         `}>
-            <div className="max-w-[1800px] mx-auto px-6 lg:px-12 w-full flex justify-between items-center">
+            <div className="max-w-[1800px] mx-auto px-6 lg:px-12 w-full h-full flex justify-between items-center">
                 
                 {/* Left: Logo - Fixed click behavior */}
-                <div className="flex items-center space-x-12">
+                <div className="flex items-stretch h-full space-x-12">
                     <motion.div 
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
@@ -181,7 +160,7 @@ const Navbar = ({ activeTab, onTabClick, user, logout, processingQueue = [] }) =
 
                     {/* Center: Desktop Nav Links */}
                     {user && (
-                        <div className="hidden lg:flex items-center space-x-2">
+                        <div className="hidden lg:flex items-center space-x-1.5">
                             {navLinks.map(link => (
                                 <NavItem key={link.id} item={link} />
                             ))}

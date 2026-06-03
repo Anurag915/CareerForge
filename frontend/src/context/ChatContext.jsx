@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 
 const ChatContext = createContext(null);
 
@@ -13,7 +13,7 @@ export const ChatProvider = ({ children }) => {
     // 1. Load sidebar sessions list on initialization
     const fetchSessions = useCallback(async () => {
         try {
-            const response = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/chat/sessions`);
+            const response = await api.get('/api/chat/sessions');
             const userSessions = response.data;
             setSessions(userSessions);
             
@@ -46,7 +46,7 @@ export const ChatProvider = ({ children }) => {
         if (!sid) return;
         setFetchingHistory(true);
         try {
-            const response = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/chat/sessions/${sid}`);
+            const response = await api.get(`/api/chat/sessions/${sid}`);
             setMessages(response.data.messages || []);
         } catch (e) {
             console.error("Failed to load chat history", e);
@@ -71,7 +71,7 @@ export const ChatProvider = ({ children }) => {
     // 4. Create a Fresh Session
     const createNewSession = async (title = "New Conversation", skipHistoryFetch = false) => {
         try {
-            const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/chat/sessions`, { title });
+            const res = await api.post('/api/chat/sessions', { title });
             const newSid = res.data.id;
             
             // Prepend locally instantly
@@ -94,7 +94,7 @@ export const ChatProvider = ({ children }) => {
     // 5. Delete Session
     const deleteSession = async (sid) => {
         try {
-            await axios.delete(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/chat/sessions/${sid}`);
+            await api.delete(`/api/chat/sessions/${sid}`);
             setSessions(prev => prev.filter(s => s.id !== sid));
             if (activeSessionId === sid) {
                 // Fallback to null or next available
@@ -127,7 +127,7 @@ export const ChatProvider = ({ children }) => {
         setLoadingSessionId(currentSid);
 
         try {
-            const response = await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/chat/sessions/${currentSid}/message`, {
+            const response = await api.post(`/api/chat/sessions/${currentSid}/message`, {
                 prompt,
                 resume_id: contextResumeId
             });

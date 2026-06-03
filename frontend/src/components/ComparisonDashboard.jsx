@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Columns, Check, AlertCircle, Sparkles, UserPlus, Trash2, BrainCircuit } from 'lucide-react';
 
@@ -16,7 +16,7 @@ const ComparisonDashboard = () => {
     useEffect(() => {
         const fetchResumes = async () => {
             try {
-                const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/resumes`);
+                const res = await api.get('/resumes');
                 setResumes(res.data);
             } catch (err) {
                 console.error("Failed to fetch resumes:", err);
@@ -45,7 +45,7 @@ const ComparisonDashboard = () => {
                 formData.append('resume', file);
                 formData.append('persist', 'false');
                 
-                const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/analyze-advanced`, formData);
+                const res = await api.post('/analyze-advanced', formData);
                 newTemps.push({
                     id: res.data.resume_id,
                     filename: file.name,
@@ -68,7 +68,7 @@ const ComparisonDashboard = () => {
         setLoading(true);
         setError(null);
         try {
-            const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/compare`, { 
+            const res = await api.post('/compare', { 
                 resume_ids: selectedIds,
                 job_description: jobDescription,
                 top_n: topN > 0 ? parseInt(topN) : null

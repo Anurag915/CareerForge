@@ -1,4 +1,4 @@
-import axios from 'axios';
+import api from '../services/api';
 import { motion } from 'framer-motion';
 import { Activity, Clock, CheckCircle2, AlertCircle, ChevronRight, Loader2, RefreshCw, Ban } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -18,7 +18,7 @@ const JobsView = ({ onViewResult }) => {
     const { data: jobs = [], isLoading: loading, refetch: fetchJobs } = useQuery({
         queryKey: ['jobs'],
         queryFn: async () => {
-            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/jobs`);
+            const res = await api.get('/api/jobs');
             return res.data;
         },
         // Adaptive Polling Strategy: Poll every 3s ONLY when background jobs are running, 
@@ -34,7 +34,7 @@ const JobsView = ({ onViewResult }) => {
     // Cancel Task Mutation
     const cancelMutation = useMutation({
         mutationFn: async (jobId) => {
-            await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/job/${jobId}/cancel`);
+            await api.post(`/api/job/${jobId}/cancel`);
         },
         onSuccess: () => {
             // Invalidate queue to instantly show cancelled state

@@ -19,15 +19,37 @@ import threading
 from functools import wraps
 from tasks import analyze_resume_job, optimize_resumes_job
 from celery_app import celery_app
+import auth_utils
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 app = Flask(__name__)
-CORS(app)
+
+# Hardened CORS: enable credential forwarding for secure HTTP-Only cookies!
+CORS(app, resources={r"/*": {"origins": [auth_utils.FRONTEND_URL, "http://localhost:5173"]}}, supports_credentials=True)
+
+# Global DDoS Protection
+limiter = Limiter(
+    key_func=get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Security Configuration
-JWT_SECRET = "careerforge-super-secret-key-2026" # In production, use os.getenv('JWT_SECRET')
-JWT_ALGORITHM = "HS256"
+# Browser Guard (Simulating Helmet Middleware)
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    return response
+
+# Unified Security configuration sourced from utilities
+JWT_SECRET = auth_utils.JWT_SECRET
+JWT_ALGORITHM = auth_utils.JWT_ALGORITHM
 
 # Localized SSL/TLS Fix for Flask-SocketIO message queue (redis-py requires lowercase 'none')
 RAW_REDIS = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
@@ -37,7 +59,7 @@ if RAW_REDIS.startswith('rediss://') and 'ssl_cert_reqs' not in RAW_REDIS:
     SOCKET_REDIS_URL = f"{RAW_REDIS}{separator}ssl_cert_reqs=none"
 
 # Initialize Socket.IO with Redis as message queue for cross-process communication
-socketio = SocketIO(app, cors_allowed_origins="*", message_queue=SOCKET_REDIS_URL)
+socketio = SocketIO(app, cors_allowed_origins="*", message_queue=SOCKET_REDIS_URL, async_mode='gevent')
 
 from flask_socketio import join_room
 
@@ -108,8 +130,10 @@ def require_role(role):
         return decorated
     return decorator
 
-# --- AUTH ENDPOINTS ---
+# --- PRODUCTION CUSTOM AUTH ENDPOINTS ---
+
 @app.route('/signup', methods=['POST'])
+@limiter.limit("5 per minute")
 def signup():
     data = request.json
     name = data.get('name')
@@ -123,24 +147,77 @@ def signup():
     if role not in ['candidate', 'hiring_manager']:
         return jsonify({"error": "Invalid role"}), 400
 
-    # Hash password
+    # Secure Password Hash using C-implemented bcrypt
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     
+    # Create Cryptographically Secure Verification Link
+    raw_token = auth_utils.generate_refresh_token() # Reuses 128char hex generator for extra safety
+    hashed_token = auth_utils.hash_token(raw_token)
+    expiry = datetime.datetime.utcnow() + datetime.timedelta(days=1) # Expires in 24 hours
+
     user_id = str(uuid.uuid4())[:8]
     success = db.save_user({
         "id": user_id,
         "name": name,
         "email": email,
         "password": hashed_password,
-        "role": role
+        "role": role,
+        "verification_token": hashed_token,
+        "verification_token_expires": expiry
     })
     
     if not success:
         return jsonify({"error": "Email already registered"}), 400
         
-    return jsonify({"message": "User created successfully"}), 201
+    # Dispatch async Resend transaction
+    email_sent = auth_utils.send_verification_email(email, raw_token)
+    
+    return jsonify({
+        "message": "Registration successful. Please check your inbox to verify your email before logging in.",
+        "email_status": "sent" if email_sent else "skipped (api key missing)"
+    }), 201
+
+@app.route('/verify-email', methods=['POST'])
+def verify_email():
+    data = request.json
+    raw_token = data.get('token')
+    if not raw_token:
+         return jsonify({"error": "Token parameter is missing"}), 400
+         
+    hashed_token = auth_utils.hash_token(raw_token)
+    user = db.verify_user_email(hashed_token)
+    
+    if not user:
+         return jsonify({"error": "Invalid, expired, or already verified token."}), 400
+         
+    return jsonify({"message": "Email verified successfully! You may now log in."}), 200
+
+@app.route('/resend-verification', methods=['POST'])
+@limiter.limit("3 per minute")
+def resend_verification():
+    data = request.json
+    email = data.get('email')
+    if not email:
+         return jsonify({"error": "Email is required"}), 400
+         
+    user = db.get_user_by_email(email)
+    if not user:
+        return jsonify({"error": "No account associated with this email address"}), 404
+        
+    if user.get('is_verified'):
+         return jsonify({"message": "Account is already verified. You may log in."}), 200
+         
+    raw_token = auth_utils.generate_refresh_token()
+    hashed_token = auth_utils.hash_token(raw_token)
+    expiry = datetime.datetime.utcnow() + datetime.timedelta(days=1)
+    
+    db.update_verification_token(email, hashed_token, expiry)
+    auth_utils.send_verification_email(email, raw_token)
+    
+    return jsonify({"message": "A new verification link has been dispatched."}), 200
 
 @app.route('/login', methods=['POST'])
+@limiter.limit("10 per minute")
 def login():
     data = request.json
     email = data.get('email')
@@ -151,23 +228,33 @@ def login():
         
     user = db.get_user_by_email(email)
     if not user:
-        return jsonify({"error": "User not found"}), 404
+        return jsonify({"error": "Invalid email or password credentials"}), 401
         
     if not bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
-        return jsonify({"error": "Invalid password"}), 401
+        return jsonify({"error": "Invalid email or password credentials"}), 401
         
-    # Generate JWT
-    payload = {
-        "user_id": user['id'],
-        "name": user['name'],
-        "email": user['email'],
-        "role": user['role'],
-        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24)
-    }
-    token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    # Gatekeep: Require Verification State
+    if not user.get('is_verified', False):
+         return jsonify({
+             "error": "Email address not verified.", 
+             "requires_verification": True,
+             "email": user['email']
+         }), 403
+        
+    # 1. Generate Short-lived Memory Token
+    access_token = auth_utils.generate_access_token(user)
     
-    return jsonify({
-        "token": token,
+    # 2. Generate Secure Long-lived Database Token
+    raw_refresh_token = auth_utils.generate_refresh_token()
+    hashed_refresh = auth_utils.hash_token(raw_refresh_token)
+    refresh_expiry = datetime.datetime.utcnow() + datetime.timedelta(days=7)
+    
+    # 3. Commit to Secure Registry
+    db.save_refresh_token(user['id'], hashed_refresh, refresh_expiry)
+    
+    # 4. Package client JSON
+    resp = jsonify({
+        "accessToken": access_token,
         "user": {
             "id": user['id'],
             "name": user['name'],
@@ -175,6 +262,134 @@ def login():
             "role": user['role']
         }
     })
+    
+    # 5. Seal Hashed Token into HTTP-Only Secure Cookie
+    resp.set_cookie(
+        'refresh_token',
+        raw_refresh_token,
+        httponly=True,
+        secure=True, # ALWAYS True in modern browser safety contexts
+        samesite='None', # Allows cross-domain exchanges for separated API and Frontend stacks
+        max_age=7 * 24 * 60 * 60 # 7 days
+    )
+    
+    return resp
+
+@app.route('/refresh', methods=['POST'])
+def refresh_session():
+    raw_old_refresh = request.cookies.get('refresh_token')
+    if not raw_old_refresh:
+         return jsonify({"error": "Session expired, please log in again"}), 401
+         
+    hashed_old_refresh = auth_utils.hash_token(raw_old_refresh)
+    
+    # Compute next rotation variables
+    raw_new_refresh = auth_utils.generate_refresh_token()
+    hashed_new_refresh = auth_utils.hash_token(raw_new_refresh)
+    new_expiry = datetime.datetime.utcnow() + datetime.timedelta(days=7)
+    
+    # Atomic Database rotation logic protects against double usage replays
+    user_id = db.validate_and_revoke_refresh_token(hashed_old_refresh, hashed_new_refresh, new_expiry)
+    
+    if not user_id:
+         resp = jsonify({"error": "Invalid session credentials"})
+         resp.delete_cookie('refresh_token')
+         return resp, 401
+         
+    user = db.get_user_by_id(user_id)
+    if not user:
+         return jsonify({"error": "User account suspended"}), 401
+         
+    # Create new Access Token
+    new_access_token = auth_utils.generate_access_token(user)
+    
+    resp = jsonify({
+        "accessToken": new_access_token,
+        "user": {
+            "id": user['id'],
+            "name": user['name'],
+            "email": user['email'],
+            "role": user['role']
+        }
+    })
+    
+    # Seat rotated cookie
+    resp.set_cookie(
+        'refresh_token',
+        raw_new_refresh,
+        httponly=True,
+        secure=True,
+        samesite='None',
+        max_age=7 * 24 * 60 * 60
+    )
+    return resp
+
+@app.route('/logout', methods=['POST'])
+def logout():
+    raw_refresh = request.cookies.get('refresh_token')
+    if raw_refresh:
+         hashed_refresh = auth_utils.hash_token(raw_refresh)
+         db.revoke_refresh_token(hashed_refresh)
+         
+    resp = jsonify({"message": "Successfully logged out."})
+    resp.delete_cookie('refresh_token', samesite='None', secure=True)
+    return resp
+
+@app.route('/logout-all', methods=['POST'])
+@auth_required
+def logout_all_sessions():
+    db.revoke_all_user_sessions(request.user['user_id'])
+    resp = jsonify({"message": "Successfully terminated all device sessions."})
+    resp.delete_cookie('refresh_token', samesite='None', secure=True)
+    return resp
+
+@app.route('/forgot-password', methods=['POST'])
+@limiter.limit("3 per minute")
+def forgot_password():
+    data = request.json
+    email = data.get('email')
+    if not email:
+        return jsonify({"error": "Email address is required"}), 400
+        
+    user = db.get_user_by_email(email)
+    # Security Hardening: Return identical messages to avoid account enumeration attacks!
+    dummy_response = jsonify({"message": "If an account matches this email, a secure reset link has been sent."})
+    
+    if not user:
+        return dummy_response, 200
+        
+    raw_reset = auth_utils.generate_refresh_token()
+    hashed_reset = auth_utils.hash_token(raw_reset)
+    expiry = datetime.datetime.utcnow() + datetime.timedelta(hours=1) # Hard limit to 1 hour
+    
+    db.set_password_reset_token(email, hashed_reset, expiry)
+    auth_utils.send_reset_password_email(email, raw_reset)
+    
+    return dummy_response, 200
+
+@app.route('/reset-password', methods=['POST'])
+@limiter.limit("5 per minute")
+def reset_password():
+    data = request.json
+    raw_token = data.get('token')
+    new_password = data.get('password')
+    
+    if not raw_token or not new_password:
+         return jsonify({"error": "Reset token and new password are required."}), 400
+         
+    # Strong validation: ensure minimum lengths
+    if len(new_password) < 6:
+         return jsonify({"error": "Password must reside at 6 characters minimum."}), 400
+         
+    hashed_new_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    hashed_token = auth_utils.hash_token(raw_token)
+    
+    success = db.reset_user_password(hashed_token, hashed_new_password)
+    
+    if not success:
+         return jsonify({"error": "Reset token is invalid or expired."}), 400
+         
+    return jsonify({"message": "Credentials updated successfully. Please log in."}), 200
 
 @app.route('/upload', methods=['POST'])
 @auth_required

@@ -1,21 +1,25 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
-import { LogIn, Mail, Lock, Loader2, AlertCircle, Sparkles, ArrowLeft } from 'lucide-react';
+import { LogIn, Mail, Lock, Loader2, AlertCircle, Sparkles, ArrowLeft, CheckCircle2 } from 'lucide-react';
 
 const LoginPage = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [resendLoading, setResendLoading] = useState(false);
+    const [resendMessage, setResendMessage] = useState(null);
+    const [needsVerify, setNeedsVerify] = useState(false);
+    
     const { login, token } = useAuth();
     const navigate = useNavigate();
 
-    // Bulletproof Redirect: Force eject logged-in users immediately
+    // Force redirect authenticated users
     React.useEffect(() => {
-        if (token || localStorage.getItem('token')) {
+        if (token || localStorage.getItem('accessToken')) {
             navigate('/', { replace: true });
         }
     }, [token, navigate]);
@@ -24,14 +28,36 @@ const LoginPage = () => {
         e.preventDefault();
         setLoading(true);
         setError(null);
+        setNeedsVerify(false);
+        setResendMessage(null);
+
         try {
-            const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/login`, { email, password });
-            login(res.data.token, res.data.user);
+            const res = await api.post('/login', { email, password });
+            login(res.data.accessToken, res.data.user);
             navigate('/', { replace: true });
         } catch (err) {
-            setError(err.response?.data?.error || "Login failed. Check your credentials.");
+            const errData = err.response?.data;
+            if (errData?.requires_verification) {
+                setNeedsVerify(true);
+                setError(errData.error);
+            } else {
+                setError(errData?.error || "Login failed. Check your credentials.");
+            }
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleResendVerification = async () => {
+        setResendLoading(true);
+        setResendMessage(null);
+        try {
+            const res = await api.post('/resend-verification', { email });
+            setResendMessage(res.data.message);
+        } catch (err) {
+            setResendMessage(err.response?.data?.error || "Failed to resend link.");
+        } finally {
+            setResendLoading(false);
         }
     };
 
@@ -88,7 +114,10 @@ const LoginPage = () => {
 
                     {/* Password Input */}
                     <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">Password</label>
+                        <div className="flex justify-between items-center px-1">
+                            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Password</label>
+                            <Link to="/forgot-password" className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline">Forgot Password?</Link>
+                        </div>
                         <div className="relative">
                             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-600" />
                             <input 
@@ -106,10 +135,33 @@ const LoginPage = () => {
                         <motion.div 
                             initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
-                            className="flex items-center space-x-2 text-red-500 bg-red-500/10 p-3 rounded-xl border border-red-500/20 text-[11px] font-bold"
+                            className="flex flex-col space-y-2 text-red-500 bg-red-500/10 p-3 rounded-xl border border-red-500/20 text-[11px] font-bold"
                         >
-                            <AlertCircle className="w-4 h-4 shrink-0 animate-bounce" />
-                            <span>{error}</span>
+                            <div className="flex items-center space-x-2">
+                                <AlertCircle className="w-4 h-4 shrink-0 animate-bounce" />
+                                <span>{error}</span>
+                            </div>
+                            {needsVerify && (
+                                <button
+                                    type="button"
+                                    onClick={handleResendVerification}
+                                    disabled={resendLoading}
+                                    className="mt-1 text-left text-[10px] text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50"
+                                >
+                                    {resendLoading ? "Dispatching link..." : "➡️ Click here to Resend Verification Link"}
+                                </button>
+                            )}
+                        </motion.div>
+                    )}
+
+                    {resendMessage && (
+                        <motion.div 
+                            initial={{ opacity: 0, y: -5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="flex items-center space-x-2 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20 text-[11px] font-bold"
+                        >
+                            <CheckCircle2 className="w-4 h-4 shrink-0" />
+                            <span>{resendMessage}</span>
                         </motion.div>
                     )}
 

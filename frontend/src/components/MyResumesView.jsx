@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, UploadCloud, Trash2, Search, Plus, Calendar, ShieldCheck } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -20,7 +20,7 @@ const MyResumesView = () => {
     const { data: resumes = [], isLoading: loading } = useQuery({
         queryKey: ['resumes'],
         queryFn: async () => {
-            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/resumes`);
+            const res = await api.get('/resumes');
             return res.data;
         }
     });
@@ -33,7 +33,7 @@ const MyResumesView = () => {
                 formData.append('resume', file);
                 formData.append('type', 'resume');
                 formData.append('persist', 'true');
-                await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/upload`, formData);
+                await api.post('/upload', formData);
             }
         },
         onSuccess: () => {

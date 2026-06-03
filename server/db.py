@@ -126,6 +126,26 @@ def init_db():
             FOREIGN KEY (session_id) REFERENCES chat_sessions (id) ON DELETE CASCADE
         )
     ''')
+
+    # === CUSTOM SAAS AUTH UPGRADES ===
+    # 1. Dynamic User Columns Migration
+    cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE")
+    cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token TEXT")
+    cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token_expires TIMESTAMP")
+    cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT")
+    cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMP")
+
+    # 2. Refresh Tokens Table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS refresh_tokens (
+            id SERIAL PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            token_hash TEXT UNIQUE NOT NULL,
+            expires_at TIMESTAMP NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        )
+    ''')
     
     conn.commit()
     conn.close()
@@ -135,9 +155,17 @@ def save_user(user_data):
     cursor = conn.cursor()
     try:
         cursor.execute('''
-            INSERT INTO users (id, name, email, password, role)
-            VALUES (%s, %s, %s, %s, %s)
-        ''', (user_data['id'], user_data['name'], user_data['email'], user_data['password'], user_data.get('role', 'candidate')))
+            INSERT INTO users (id, name, email, password, role, verification_token, verification_token_expires)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        ''', (
+            user_data['id'], 
+            user_data['name'], 
+            user_data['email'], 
+            user_data['password'], 
+            user_data.get('role', 'candidate'),
+            user_data.get('verification_token'),
+            user_data.get('verification_token_expires')
+        ))
         conn.commit()
         return True
     except Exception as e:
@@ -514,3 +542,153 @@ def delete_chat_session(session_id, user_id):
     cursor.execute('DELETE FROM chat_sessions WHERE id = %s AND user_id = %s', (session_id, user_id))
     conn.commit()
     conn.close()
+
+# === PRODUCTION SAAS AUTH DB UTILITIES ===
+
+def verify_user_email(token_hash):
+    """
+    Compares current timestamp against expiry, sets is_verified, and nullifies verification tokens.
+    """
+    import datetime
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    now = datetime.datetime.utcnow()
+    
+    cursor.execute('''
+        SELECT id, email FROM users 
+        WHERE verification_token = %s AND verification_token_expires > %s
+    ''', (token_hash, now))
+    
+    user = cursor.fetchone()
+    if not user:
+        conn.close()
+        return None
+        
+    cursor.execute('''
+        UPDATE users 
+        SET is_verified = TRUE, verification_token = NULL, verification_token_expires = NULL 
+        WHERE id = %s
+    ''', (user['id'],))
+    
+    conn.commit()
+    conn.close()
+    return dict(user)
+
+def update_verification_token(email, token_hash, expires_at):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE users 
+        SET verification_token = %s, verification_token_expires = %s 
+        WHERE email = %s AND is_verified = FALSE
+    ''', (token_hash, expires_at, email))
+    rowcount = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return rowcount > 0
+
+def set_password_reset_token(email, token_hash, expires_at):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE users 
+        SET reset_token = %s, reset_token_expires = %s 
+        WHERE email = %s
+    ''', (token_hash, expires_at, email))
+    rowcount = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return rowcount > 0
+
+def reset_user_password(token_hash, new_hashed_password):
+    import datetime
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    now = datetime.datetime.utcnow()
+    
+    cursor.execute('''
+        SELECT id FROM users 
+        WHERE reset_token = %s AND reset_token_expires > %s
+    ''', (token_hash, now))
+    
+    user = cursor.fetchone()
+    if not user:
+        conn.close()
+        return False
+        
+    cursor.execute('''
+        UPDATE users 
+        SET password = %s, reset_token = NULL, reset_token_expires = NULL 
+        WHERE id = %s
+    ''', (new_hashed_password, user['id']))
+    
+    # Optional security hardening: revoke all user's active refresh tokens on password change!
+    cursor.execute('DELETE FROM refresh_tokens WHERE user_id = %s', (user['id'],))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+def save_refresh_token(user_id, token_hash, expires_at):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO refresh_tokens (user_id, token_hash, expires_at) 
+        VALUES (%s, %s, %s)
+    ''', (user_id, token_hash, expires_at))
+    conn.commit()
+    conn.close()
+
+def validate_and_revoke_refresh_token(old_token_hash, new_token_hash, new_expires_at):
+    """
+    Performs signature rotation: checks old token validity, 
+    deletes it, and creates a fresh one in a single atomic transaction.
+    """
+    import datetime
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    now = datetime.datetime.utcnow()
+    
+    try:
+        cursor.execute('''
+            SELECT user_id FROM refresh_tokens 
+            WHERE token_hash = %s AND expires_at > %s
+        ''', (old_token_hash, now))
+        
+        token_row = cursor.fetchone()
+        if not token_row:
+            conn.close()
+            return None
+            
+        user_id = token_row['user_id']
+        
+        # Standard Token Rotation (STR): replace old token hash with new one
+        cursor.execute('DELETE FROM refresh_tokens WHERE token_hash = %s', (old_token_hash,))
+        cursor.execute('''
+            INSERT INTO refresh_tokens (user_id, token_hash, expires_at) 
+            VALUES (%s, %s, %s)
+        ''', (user_id, new_token_hash, new_expires_at))
+        
+        conn.commit()
+        return user_id
+    except Exception as e:
+        print(f"DB ERR: Token rotation failed: {e}")
+        conn.rollback()
+        return None
+    finally:
+        conn.close()
+
+def revoke_refresh_token(token_hash):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM refresh_tokens WHERE token_hash = %s', (token_hash,))
+    conn.commit()
+    conn.close()
+
+def revoke_all_user_sessions(user_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM refresh_tokens WHERE user_id = %s', (user_id,))
+    conn.commit()
+    conn.close()
+
