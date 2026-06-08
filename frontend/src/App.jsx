@@ -57,7 +57,8 @@ import {
   Clock,
   CheckCircle2,
 } from "lucide-react";
-import Navbar from "./components/Navbar";
+import Sidebar from "./components/Sidebar";
+import TopNavbar from "./components/TopNavbar";
 
 const parseDateTime = (str) => {
   if (!str) return new Date();
@@ -104,8 +105,10 @@ const ProtectedRoute = ({ children, requireRole }) => {
 
 function App() {
   const [activeTab, setActiveTab] = useState(() => {
-    return localStorage.getItem("activeTab") || "analyze";
+    return localStorage.getItem("activeTab") || "dashboard";
   });
+  
+  const [preSelectedCompareIds, setPreSelectedCompareIds] = useState([]);
 
   useEffect(() => {
     localStorage.setItem("activeTab", activeTab);
@@ -138,8 +141,8 @@ function App() {
     setIsUploading(true);
     setError(null);
 
-    // Instantly transition to the queue tab
-    setActiveTab("jobs");
+    // Instantly transition to the history tab (Queue view)
+    setActiveTab("history");
     addToast(`Initializing analysis campaign for ${files.length} candidate(s)...`, "info");
 
     try {
@@ -196,7 +199,13 @@ function App() {
   };
 
   const renderDashboard = () => {
+    // Show analysis dashboard if actively viewing a result
+    if (activeTab === "analyze" && results) {
+        return <AnalysisDashboard results={results} onBack={handleReset} />;
+    }
+
     switch (activeTab) {
+      case "copilot":
       case "chat":
         return <ChatUI />;
       case "abtest":
@@ -206,22 +215,29 @@ function App() {
           </ProtectedRoute>
         );
       case "compare":
-        return (
-          <ProtectedRoute requireRole="hiring_manager">
-            <ComparisonDashboard />
-          </ProtectedRoute>
-        );
+        return <ComparisonDashboard preSelectedIds={preSelectedCompareIds} />;
       case "history":
-        return <HistoryView />;
       case "jobs":
         return <JobsView onViewResult={handleViewJobResult} />;
+      case "library":
       case "resumes":
-        return <MyResumesView />;
+        return (
+          <div className="max-w-[1800px] mx-auto w-full space-y-8">
+            <UploadForm
+              onUpload={handleUpload}
+              isLoading={isUploading}
+              processingQueue={processingQueue}
+            />
+            <MyResumesView 
+              setActiveTab={setActiveTab} 
+              setPreSelectedCompareIds={setPreSelectedCompareIds} 
+            />
+          </div>
+        );
+      case "dashboard":
       default:
-        return results ? (
-          <AnalysisDashboard results={results} onBack={handleReset} />
-        ) : (
-          <div className="max-w-[1800px] mx-auto w-full px-6 lg:px-12 py-6 sm:py-12">
+        return (
+          <div className="max-w-[1800px] mx-auto w-full">
             {/* SaaS Dashboard Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-6">
               <div className="space-y-1">
@@ -241,7 +257,10 @@ function App() {
                 <button className="w-full sm:w-auto px-6 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all">
                   Export Reports
                 </button>
-                <button className="w-full sm:w-auto px-6 py-2.5 bg-slate-900 dark:bg-accent-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-accent-500/20 hover:scale-[1.02] active:scale-95 transition-all">
+                <button 
+                  onClick={() => setActiveTab('library')}
+                  className="w-full sm:w-auto px-6 py-2.5 bg-slate-900 dark:bg-accent-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-accent-500/20 hover:scale-[1.02] active:scale-95 transition-all"
+                >
                   New Campaign
                 </button>
               </div>
@@ -309,15 +328,6 @@ function App() {
                 </motion.div>
               ))}
             </div>
-
-            {/* Main Action Area */}
-            <div className="w-full">
-              <UploadForm
-                onUpload={handleUpload}
-                isLoading={isUploading}
-                processingQueue={processingQueue}
-              />
-            </div>
           </div>
         );
     }
@@ -337,72 +347,77 @@ function App() {
   }
 
   return (
-    <div
-      className={`${theme} flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 w-full overflow-x-hidden theme-transition font-sans ${activeTab === "chat" ? "h-screen overflow-hidden" : "min-h-screen"}`}
-    >
-      {/* Premium Modular Navbar */}
-      <Navbar
-        activeTab={activeTab}
-        onTabClick={handleTabClick}
-        user={user}
+    <div className={`${theme} flex h-screen bg-slate-50 dark:bg-[#0f1117] text-slate-900 dark:text-slate-100 overflow-hidden theme-transition font-sans`}>
+      
+      {/* Left Sidebar Navigation */}
+      <Sidebar 
+        activeTab={activeTab === 'analyze' ? 'history' : activeTab} // Keep sidebar sync
+        onTabClick={handleTabClick} 
+        user={user} 
         logout={logout}
-        processingQueue={processingQueue}
       />
 
-      {/* Main Container */}
-      <main
-        className={`flex-grow flex flex-col relative z-10 w-full min-h-0 ${activeTab === "chat" ? "h-[calc(100vh-80px)] overflow-hidden pt-16 pb-0 px-0" : "min-h-0 overflow-y-auto pt-20 pb-8 px-6 lg:px-12"}`}
-      >
-        {/* Global Error Notification */}
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -100 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -100 }}
-              className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] w-full max-w-md px-4"
-            >
-              <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-red-200 dark:border-red-500/20 flex items-center gap-4 shadow-[0_20px_50px_-12px_rgba(239,68,68,0.2)] dark:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] backdrop-blur-xl">
-                <div className="w-10 h-10 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center flex-shrink-0">
-                  <AlertCircle className="w-6 h-6 text-red-500" />
-                </div>
-                <div className="flex-grow">
-                  <h3 className="text-sm font-black text-red-600 dark:text-red-400 uppercase tracking-wider mb-0.5">
-                    Analysis Error
-                  </h3>
-                  <p className="text-sm font-medium text-slate-600 dark:text-slate-300 leading-tight">
-                    {error}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setError(null)}
-                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all group active:scale-90"
-                  aria-label="Close error"
-                >
-                  <X className="w-5 h-5 text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100" />
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+      {/* Main App Canvas */}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
+        
+        {/* Lightweight Top Navbar */}
+        <TopNavbar 
+          user={user} 
+          logout={logout} 
+          theme={theme} 
+          toggleTheme={toggleTheme} 
+          onTabClick={handleTabClick}
+        />
 
-        {/* Dynamic Page Content */}
-        <Routes>
-          {/* Anti-Recursion Guards: Bounce authed users out of auth pages */}
-          <Route path="/login" element={<Navigate to="/" replace />} />
-          <Route path="/signup" element={<Navigate to="/" replace />} />
-          <Route path="/verify-email" element={<Navigate to="/" replace />} />
-          <Route
-            path="/forgot-password"
-            element={<Navigate to="/" replace />}
-          />
-          <Route path="/reset-password" element={<Navigate to="/" replace />} />
-          <Route path="/analysis/:id" element={<AnalysisPage />} />
-          <Route path="/" element={renderDashboard()} />
-          {/* Catch-all safety net */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </main>
+        {/* Scrollable Content Area */}
+        <main className={`flex-1 overflow-y-auto relative z-10 w-full ${activeTab === "copilot" || activeTab === "chat" ? "p-0" : "p-6 lg:p-10"}`}>
+          
+          {/* Global Error Notification */}
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="absolute top-6 left-1/2 -translate-x-1/2 z-[200] w-full max-w-md px-4"
+              >
+                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-red-200 dark:border-red-500/20 flex items-center gap-4 shadow-[0_20px_50px_-12px_rgba(239,68,68,0.2)] dark:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+                  <div className="w-10 h-10 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center flex-shrink-0">
+                    <AlertCircle className="w-6 h-6 text-red-500" />
+                  </div>
+                  <div className="flex-grow">
+                    <h3 className="text-sm font-black text-red-600 dark:text-red-400 uppercase tracking-wider mb-0.5">
+                      Analysis Error
+                    </h3>
+                    <p className="text-sm font-medium text-slate-600 dark:text-slate-300 leading-tight">
+                      {error}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setError(null)}
+                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all group active:scale-90"
+                    aria-label="Close error"
+                  >
+                    <X className="w-5 h-5 text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100" />
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Dynamic Page Content */}
+          <Routes>
+            <Route path="/login" element={<Navigate to="/" replace />} />
+            <Route path="/signup" element={<Navigate to="/" replace />} />
+            <Route path="/verify-email" element={<Navigate to="/" replace />} />
+            <Route path="/forgot-password" element={<Navigate to="/" replace />} />
+            <Route path="/reset-password" element={<Navigate to="/" replace />} />
+            <Route path="/analysis/:id" element={<AnalysisPage />} />
+            <Route path="/" element={renderDashboard()} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
+      </div>
 
       <Toaster richColors closeButton theme={theme} position="bottom-right" />
     </div>

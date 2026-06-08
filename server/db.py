@@ -233,7 +233,7 @@ def save_resume(resume_data, user_id):
 def get_all_resumes(user_id):
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
-    cursor.execute('SELECT id, filename, created_at FROM resumes WHERE user_id = %s ORDER BY created_at DESC', (user_id,))
+    cursor.execute('SELECT id, filename, created_at, pdf_url FROM resumes WHERE user_id = %s ORDER BY created_at DESC', (user_id,))
     resumes = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return resumes

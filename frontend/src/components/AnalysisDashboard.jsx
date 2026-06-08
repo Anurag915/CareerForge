@@ -1,14 +1,11 @@
-import React, { useMemo } from 'react';
-import { Worker, Viewer } from '@react-pdf-viewer/core';
-import { defaultLayoutPlugin } from '@react-pdf-viewer/default-layout';
-import '@react-pdf-viewer/core/lib/styles/index.css';
-import '@react-pdf-viewer/default-layout/lib/styles/index.css';
+import React, { useMemo, useState } from 'react';
 import { 
     ChevronLeft, FileText, Download, ExternalLink, MessageSquare, Scale, RefreshCw, 
     DownloadCloud, Target, CheckCircle2, AlertCircle, TrendingUp, TrendingDown, 
     Briefcase, GraduationCap, Award, Hash, Zap, Clock, Check, XCircle, LayoutTemplate, Star,
     Loader2
 } from 'lucide-react';
+import ResumeViewerModal from './ResumeViewerModal';
 
 const Card = ({ children, className = "" }) => (
     <div className={`bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden ${className}`}>
@@ -38,7 +35,7 @@ const AnalysisDashboard = ({ results, onBack }) => {
         filename = "Resume Document"
     } = results || {};
 
-    const defaultLayoutPluginInstance = defaultLayoutPlugin();
+    const [viewerOpen, setViewerOpen] = useState(false);
 
     // Derived Data
     const skillCount = matched_skills.length;
@@ -82,19 +79,6 @@ const AnalysisDashboard = ({ results, onBack }) => {
         : ats_score >= 40 ? { label: "Moderate Match", color: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-500/10", border: "border-amber-200 dark:border-amber-500/20" }
         : { label: "Weak Match", color: "text-red-500", bg: "bg-red-50 dark:bg-red-500/10", border: "border-red-200 dark:border-red-500/20" };
 
-    const renderLoader = (percentages) => (
-        <div className="flex flex-col items-center justify-center w-full h-full text-slate-400 bg-slate-50 dark:bg-slate-900">
-            <Loader2 className="w-8 h-8 animate-spin mb-3 text-blue-500" />
-            <p className="text-sm font-medium">Loading document {Math.round(percentages)}%</p>
-        </div>
-    );
-
-    const renderError = () => (
-        <div className="flex flex-col items-center justify-center w-full h-full text-slate-500 p-6 text-center bg-slate-50 dark:bg-slate-900">
-            <AlertCircle className="w-10 h-10 mb-3 text-red-400 opacity-80" />
-            <p className="font-medium text-sm">Failed to load PDF</p>
-        </div>
-    );
 
     const formatContent = (content) => {
         if (!content) return <p className="text-sm text-slate-400 italic">No information available.</p>;
@@ -115,79 +99,31 @@ const AnalysisDashboard = ({ results, onBack }) => {
     };
 
     return (
-        <div className="flex flex-col lg:flex-row w-full h-[calc(100vh-64px)] bg-slate-200 dark:bg-slate-800 overflow-hidden font-sans gap-[1px]">
+        <div className="w-full flex flex-col bg-slate-50 dark:bg-[#0f1117] relative z-10 rounded-2xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800 h-[calc(100vh-140px)]">
             
-            {/* LEFT PANEL: RESUME VIEWER */}
-            <div className="w-full lg:w-1/2 h-[50vh] lg:h-full flex flex-col bg-white dark:bg-slate-900 z-10">
-                {/* Custom Viewer Header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
-                    <div className="flex items-center gap-3">
-                        <button 
-                            onClick={onBack}
-                            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-slate-500 transition-colors"
-                        >
-                            <ChevronLeft className="w-5 h-5" />
-                        </button>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <FileText className="w-4 h-4 text-slate-400" />
-                                <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200 max-w-[200px] truncate" title={filename}>{filename}</h2>
-                            </div>
-                            <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-[10px] font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 rounded uppercase tracking-wider">Analyzed</span>
-                                <span className="text-[10px] font-bold text-slate-400">SCORE: {ats_score}%</span>
-                            </div>
+            {/* Main Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 gap-4">
+                <div className="flex items-center gap-4">
+                    <button onClick={onBack} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 transition-colors">
+                        <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <div>
+                        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200 max-w-[200px] sm:max-w-md truncate" title={filename}>{filename}</h2>
+                        <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[10px] font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded uppercase tracking-wider">Analysis Complete</span>
+                            <span className="text-[10px] font-bold text-slate-500">SCORE: {ats_score}%</span>
                         </div>
                     </div>
-                    
-                    <div className="flex items-center gap-1">
-                        {pdf_url && (
-                            <>
-                                <a 
-                                    href={pdf_url} 
-                                    target="_blank" 
-                                    rel="noreferrer"
-                                    className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-md transition-colors tooltip-trigger"
-                                    title="Open in new tab"
-                                >
-                                    <ExternalLink className="w-4 h-4" />
-                                </a>
-                                <a 
-                                    href={pdf_url} 
-                                    download
-                                    className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-md transition-colors"
-                                    title="Download PDF"
-                                >
-                                    <Download className="w-4 h-4" />
-                                </a>
-                            </>
-                        )}
-                    </div>
                 </div>
-
-                {/* PDF Viewer Canvas */}
-                <div className="flex-1 w-full relative bg-slate-100 dark:bg-[#1e1e24] overflow-hidden">
-                    {!pdf_url ? (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
-                            <FileText className="w-12 h-12 mb-3 opacity-20" />
-                            <p className="text-sm font-medium">Document Source Unavailable</p>
-                        </div>
-                    ) : (
-                        <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js">
-                            <Viewer
-                                fileUrl={pdf_url}
-                                plugins={[defaultLayoutPluginInstance]}
-                                renderLoader={renderLoader}
-                                renderError={renderError}
-                                theme={{ theme: 'auto' }}
-                            />
-                        </Worker>
-                    )}
-                </div>
+                
+                <button 
+                    onClick={() => setViewerOpen(true)}
+                    className="flex items-center justify-center gap-2 py-2 px-5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-sm font-bold rounded-xl transition-colors shadow-sm hover:bg-slate-800 dark:hover:bg-white w-full sm:w-auto"
+                >
+                    <FileText className="w-4 h-4" /> View Original Resume
+                </button>
             </div>
 
-            {/* RIGHT PANEL: INTELLIGENCE FEED */}
-            <div className="w-full lg:w-1/2 h-[50vh] lg:h-full flex flex-col bg-slate-50 dark:bg-[#0f1117] relative z-10">
                 
                 {/* Sticky Quick Actions */}
                 <div className="sticky top-0 z-20 flex items-center gap-2 p-3 border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shrink-0">
@@ -371,7 +307,13 @@ const AnalysisDashboard = ({ results, onBack }) => {
                     {/* Bottom Padding */}
                     <div className="h-8"></div>
                 </div>
-            </div>
+            
+                <ResumeViewerModal 
+                    isOpen={viewerOpen} 
+                    onClose={() => setViewerOpen(false)} 
+                    pdfUrl={pdf_url} 
+                    filename={filename} 
+                />
         </div>
     );
 };

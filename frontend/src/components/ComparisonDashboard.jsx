@@ -3,9 +3,9 @@ import api from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Columns, Check, AlertCircle, Sparkles, UserPlus, Trash2, BrainCircuit } from 'lucide-react';
 
-const ComparisonDashboard = () => {
+const ComparisonDashboard = ({ preSelectedIds = [] }) => {
     const [resumes, setResumes] = useState([]);
-    const [selectedIds, setSelectedIds] = useState([]);
+    const [selectedIds, setSelectedIds] = useState(preSelectedIds);
     const [comparisonData, setComparisonData] = useState(null);
     const [jobDescription, setJobDescription] = useState('');
     const [topN, setTopN] = useState(0); // 0 means all
@@ -24,6 +24,12 @@ const ComparisonDashboard = () => {
         };
         fetchResumes();
     }, []);
+
+    useEffect(() => {
+        if (preSelectedIds && preSelectedIds.length > 0) {
+            setSelectedIds(preSelectedIds);
+        }
+    }, [preSelectedIds]);
 
     const toggleSelection = (id) => {
         setSelectedIds(prev => 

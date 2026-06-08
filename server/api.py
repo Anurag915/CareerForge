@@ -433,8 +433,8 @@ def upload_resume():
         if persist:
             try:
                 print(f"DEBUG: Attempting Cloudinary upload for {file.filename}")
-                # Upload to Cloudinary securely
-                upload_result = cloudinary.uploader.upload(temp_path, resource_type="auto", folder="CareerForge")
+                # Upload to Cloudinary securely as raw file to preserve PDF mimetype and CORS headers
+                upload_result = cloudinary.uploader.upload(temp_path, resource_type="raw", folder="CareerForge")
                 pdf_url = upload_result.get("secure_url")
                 print(f"DEBUG: Cloudinary upload successful. secure_url: {pdf_url}")
                 
@@ -762,6 +762,37 @@ def get_analysis_history():
 
 # --- PHASE 1: JOB SYSTEM APIs ---
 
+@app.route('/api/job/analyze-existing', methods=['POST'])
+@auth_required
+def analyze_existing_job():
+    data = request.json
+    resume_id = data.get('resume_id')
+    job_description = data.get('job_description', '')
+    
+    if not resume_id or not job_description:
+        return jsonify({"error": "Resume ID and job description are required"}), 400
+        
+    user_id = request.user['user_id']
+    resume = db.get_resume(resume_id, user_id)
+    
+    if not resume:
+        return jsonify({"error": "Resume not found or unauthorized"}), 404
+        
+    job_id = db.create_job(user_id, 'ats', name=resume['filename'])
+    
+    job_data = {
+        "type": "ats",
+        "resume_id": resume_id,
+        "resume_text": resume['raw_text'],
+        "filename": resume['filename'],
+        "job_description": job_description,
+        "persist": False # Already in vault
+    }
+    
+    dispatch_job(analyze_resume_job, job_id, job_data, user_id)
+    
+    return jsonify({"jobId": job_id, "status": "pending"})
+
 @app.route('/api/job/start', methods=['POST'])
 @auth_required
 def start_job():
@@ -950,7 +981,8 @@ def analyze_advanced():
     pdf_url = None
     if persist:
         try:
-            upload_result = cloudinary.uploader.upload(temp_path, resource_type="auto", folder="CareerForge")
+            # Upload to Cloudinary securely as raw file to preserve PDF mimetype and CORS headers
+            upload_result = cloudinary.uploader.upload(temp_path, resource_type="raw", folder="CareerForge")
             pdf_url = upload_result.get("secure_url")
         except Exception as ce:
             print(f"Cloudinary Upload Error: {ce}")
