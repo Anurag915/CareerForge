@@ -2,9 +2,24 @@ import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Columns, Check, AlertCircle, Sparkles, UserPlus, Trash2, BrainCircuit } from 'lucide-react';
+import PaginationControls from './PaginationControls';
+import { useQuery } from '@tanstack/react-query';
 
 const ComparisonDashboard = ({ preSelectedIds = [] }) => {
-    const [resumes, setResumes] = useState([]);
+    // Shared query cache with MyResumesView
+    const { data: resumes = [] } = useQuery({
+        queryKey: ['resumes'],
+        queryFn: async () => {
+            const res = await api.get('/resumes');
+            return res.data;
+        },
+        staleTime: 5 * 60 * 1000, // 5 minutes
+        gcTime: 10 * 60 * 1000,   // 10 minutes cache
+        refetchOnWindowFocus: false,
+        refetchOnMount: false,
+        refetchOnReconnect: false
+    });
+
     const [selectedIds, setSelectedIds] = useState(preSelectedIds);
     const [comparisonData, setComparisonData] = useState(null);
     const [jobDescription, setJobDescription] = useState('');
@@ -12,18 +27,8 @@ const ComparisonDashboard = ({ preSelectedIds = [] }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [tempResumes, setTempResumes] = useState([]);
-
-    useEffect(() => {
-        const fetchResumes = async () => {
-            try {
-                const res = await api.get('/resumes');
-                setResumes(res.data);
-            } catch (err) {
-                console.error("Failed to fetch resumes:", err);
-            }
-        };
-        fetchResumes();
-    }, []);
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 12;
 
     useEffect(() => {
         if (preSelectedIds && preSelectedIds.length > 0) {
@@ -89,8 +94,14 @@ const ComparisonDashboard = ({ preSelectedIds = [] }) => {
 
     const allResumes = [...resumes, ...tempResumes];
 
+    const totalPages = Math.ceil(allResumes.length / itemsPerPage);
+    const paginatedResumes = allResumes.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
     return (
-        <div className="w-full space-y-8 theme-transition">
+        <div className="w-full space-y-4 theme-transition">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
                     <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
@@ -121,17 +132,17 @@ const ComparisonDashboard = ({ preSelectedIds = [] }) => {
             </div>
 
             {/* JD & Top N Selection */}
-            <div className="grid md:grid-cols-3 gap-6">
-                <div className="md:col-span-2 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-6 rounded-2xl shadow-subtle">
+            <div className="grid md:grid-cols-3 gap-4">
+                <div className="md:col-span-2 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-4 rounded-2xl shadow-subtle">
                     <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Target Job Description (Required)</label>
                     <textarea 
-                        className="w-full h-32 p-4 bg-slate-50/30 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:ring-4 focus:ring-accent-500/5 transition-all outline-none"
+                        className="w-full h-24 p-3 bg-slate-50/30 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:ring-4 focus:ring-accent-500/5 transition-all outline-none"
                         placeholder="Paste the job description..."
                         value={jobDescription}
                         onChange={(e) => setJobDescription(e.target.value)}
                     />
                 </div>
-                <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-6 rounded-2xl shadow-subtle flex flex-col justify-between">
+                <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-4 rounded-2xl shadow-subtle flex flex-col justify-between">
                     <div>
                         <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Shortlist Filter</label>
                         <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-4 leading-relaxed">Limit results to the top <strong>N</strong> candidates. Leave at 0 to see all.</p>
@@ -155,7 +166,7 @@ const ComparisonDashboard = ({ preSelectedIds = [] }) => {
 
             {/* Selection Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {allResumes.map(r => (
+                {paginatedResumes.map(r => (
                     <div
                         key={r.id}
                         onClick={() => toggleSelection(r.id)}
@@ -179,6 +190,18 @@ const ComparisonDashboard = ({ preSelectedIds = [] }) => {
                     </div>
                 ))}
             </div>
+
+            {allResumes.length > 0 && (
+                <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-4 rounded-2xl shadow-subtle">
+                    <PaginationControls
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                        totalItems={allResumes.length}
+                        itemsPerPage={itemsPerPage}
+                    />
+                </div>
+            )}
 
             {/* Results Table */}
             <AnimatePresence>

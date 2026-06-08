@@ -63,7 +63,7 @@ const ResumeViewerModal = ({ isOpen, onClose, pdfUrl, filename }) => {
                         {pdfUrl ? (
                             <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js">
                                 <Viewer
-                                    fileUrl={pdfUrl}
+                                    fileUrl={`https://corsproxy.io/?${encodeURIComponent(pdfUrl)}`}
                                     plugins={[defaultLayoutPluginInstance]}
                                     renderError={(error) => (
                                         <div className="flex flex-col items-center justify-center h-full space-y-4 p-8 text-center bg-slate-50 dark:bg-slate-900">

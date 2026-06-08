@@ -239,7 +239,7 @@ function App() {
         return (
           <div className="max-w-[1800px] mx-auto w-full">
             {/* SaaS Dashboard Header */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-6">
+            <div className="flex flex-col md:flex-row md:items-end justify-between mb-6 gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="h-2 w-2 rounded-full bg-accent-500 animate-pulse" />
@@ -267,7 +267,7 @@ function App() {
             </div>
 
             {/* SaaS Metrics Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
               {[
                 {
                   label: "Candidates Scanned",
@@ -303,7 +303,7 @@ function App() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.1 }}
-                  className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/50 p-5 sm:p-6 rounded-2xl sm:rounded-[24px] shadow-sm hover:shadow-md transition-all group"
+                  className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/50 p-4 sm:p-5 rounded-2xl sm:rounded-[24px] shadow-sm hover:shadow-md transition-all group"
                 >
                   <div className="flex justify-between items-start mb-4">
                     <div
@@ -370,7 +370,7 @@ function App() {
         />
 
         {/* Scrollable Content Area */}
-        <main className={`flex-1 overflow-y-auto relative z-10 w-full ${activeTab === "copilot" || activeTab === "chat" ? "p-0" : "p-6 lg:p-10"}`}>
+        <main className={`flex-1 overflow-y-auto relative z-10 w-full ${activeTab === "copilot" || activeTab === "chat" ? "p-0" : "p-4 md:p-6"}`}>
           
           {/* Global Error Notification */}
           <AnimatePresence>

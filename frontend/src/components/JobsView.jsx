@@ -3,6 +3,7 @@ import api from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, Clock, CheckCircle2, AlertCircle, Loader2, RefreshCw, Ban, ChevronDown, ChevronUp, ArrowUpDown, Eye, Sparkles } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import PaginationControls from './PaginationControls';
 
 const parseDateTime = (str) => {
     if (!str) return new Date();
@@ -27,6 +28,8 @@ const JobsView = ({ onViewResult }) => {
     const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'desc' });
     const [expandedRows, setExpandedRows] = useState(new Set());
     const [fetchingJobId, setFetchingJobId] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
 
     // Intelligent Fetch Configuration
     const { data: jobs = [], isLoading: loading, refetch: fetchJobs } = useQuery({
@@ -96,6 +99,7 @@ const JobsView = ({ onViewResult }) => {
             key,
             direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
         }));
+        setCurrentPage(1);
     };
 
     const getStatusIcon = (status) => {
@@ -131,6 +135,12 @@ const JobsView = ({ onViewResult }) => {
         if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
     });
+
+    const totalPages = Math.ceil(sortedJobs.length / itemsPerPage);
+    const paginatedJobs = sortedJobs.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
 
     const SortIcon = ({ columnKey }) => {
         if (sortConfig.key !== columnKey) return <ArrowUpDown className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 transition-opacity" />;
@@ -206,36 +216,36 @@ const JobsView = ({ onViewResult }) => {
                             <thead>
                                 <tr className="bg-slate-50/70 dark:bg-slate-800/40 border-b border-slate-200 dark:border-slate-800">
                                     <th 
-                                        className="px-6 py-5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest cursor-pointer group hover:text-slate-700 dark:hover:text-slate-300 whitespace-nowrap"
+                                        className="px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest cursor-pointer group hover:text-slate-700 dark:hover:text-slate-300 whitespace-nowrap"
                                         onClick={() => handleSort('name')}
                                     >
                                         <div className="flex items-center gap-2">Resume Name <SortIcon columnKey="name" /></div>
                                     </th>
                                     <th 
-                                        className="px-6 py-5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest cursor-pointer group hover:text-slate-700 dark:hover:text-slate-300 whitespace-nowrap"
+                                        className="px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest cursor-pointer group hover:text-slate-700 dark:hover:text-slate-300 whitespace-nowrap"
                                         onClick={() => handleSort('type')}
                                     >
                                         <div className="flex items-center gap-2">Pipeline <SortIcon columnKey="type" /></div>
                                     </th>
                                     <th 
-                                        className="px-6 py-5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest cursor-pointer group hover:text-slate-700 dark:hover:text-slate-300 whitespace-nowrap"
+                                        className="px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest cursor-pointer group hover:text-slate-700 dark:hover:text-slate-300 whitespace-nowrap"
                                         onClick={() => handleSort('status')}
                                     >
                                         <div className="flex items-center gap-2">Status <SortIcon columnKey="status" /></div>
                                     </th>
                                     <th 
-                                        className="px-6 py-5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest cursor-pointer group hover:text-slate-700 dark:hover:text-slate-300 whitespace-nowrap hidden sm:table-cell"
+                                        className="px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest cursor-pointer group hover:text-slate-700 dark:hover:text-slate-300 whitespace-nowrap hidden sm:table-cell"
                                         onClick={() => handleSort('created_at')}
                                     >
                                         <div className="flex items-center gap-2">Created <SortIcon columnKey="created_at" /></div>
                                     </th>
-                                    <th className="px-6 py-5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest text-right whitespace-nowrap">
+                                    <th className="px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest text-right whitespace-nowrap">
                                         Actions
                                     </th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                                {sortedJobs.map((job) => {
+                                {paginatedJobs.map((job) => {
                                     const isExpanded = expandedRows.has(job.id);
                                     const isActive = !['completed', 'failed', 'cancelled'].includes(job.status);
                                     
@@ -245,18 +255,18 @@ const JobsView = ({ onViewResult }) => {
                                                 className={`group hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors cursor-pointer ${isActive ? 'bg-blue-50/10 dark:bg-blue-900/10' : ''}`}
                                                 onClick={(e) => toggleRow(e, job.id)}
                                             >
-                                                <td className="px-6 py-5">
+                                                <td className="px-4 py-3">
                                                     <div className="flex flex-col">
                                                         <span className="font-semibold text-sm text-slate-900 dark:text-slate-100 truncate max-w-[200px] md:max-w-[300px]">{job.name || 'Untitled Document'}</span>
-                                                        <span className="text-[11px] text-slate-400 font-mono mt-1">#{job.id.substr(0,8)}</span>
+                                                        <span className="text-[11px] text-slate-400 font-mono mt-0.5">#{job.id.substr(0,8)}</span>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-5">
+                                                <td className="px-4 py-3">
                                                     <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 bg-slate-100/80 dark:bg-slate-800/80 px-2.5 py-1 rounded-md whitespace-nowrap border border-slate-200/50 dark:border-slate-700/50">
                                                         {job.type} Pipeline
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-5">
+                                                <td className="px-4 py-3">
                                                     <div className="flex flex-col gap-2.5 w-32 md:w-40">
                                                         {getStatusBadge(job)}
                                                         {isActive && (
@@ -358,6 +368,18 @@ const JobsView = ({ onViewResult }) => {
                                 })}
                             </tbody>
                         </table>
+                    </div>
+                )}
+                
+                {jobs.length > 0 && (
+                    <div className="p-4 bg-white dark:bg-slate-900">
+                        <PaginationControls
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={setCurrentPage}
+                            totalItems={sortedJobs.length}
+                            itemsPerPage={itemsPerPage}
+                        />
                     </div>
                 )}
             </div>

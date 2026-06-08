@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, UploadCloud, Trash2, Search, Plus, Calendar, ShieldCheck, Eye, Sparkles, Columns, X } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ResumeViewerModal from './ResumeViewerModal';
+import PaginationControls from './PaginationControls';
 import { useNavigate } from 'react-router-dom';
 
 const parseDateTime = (str) => {
@@ -18,6 +19,8 @@ const MyResumesView = ({ setActiveTab, setPreSelectedCompareIds }) => {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 12;
     
     // UI States
     const [selectedIds, setSelectedIds] = useState([]);
@@ -29,13 +32,18 @@ const MyResumesView = ({ setActiveTab, setPreSelectedCompareIds }) => {
     const [analyzeResumeId, setAnalyzeResumeId] = useState(null);
     const [jobDescription, setJobDescription] = useState('');
 
-    // Fetch Hook with Caching
+    // Fetch Hook with Optimized Caching
     const { data: resumes = [], isLoading: loading } = useQuery({
         queryKey: ['resumes'],
         queryFn: async () => {
             const res = await api.get('/resumes');
             return res.data;
-        }
+        },
+        staleTime: 5 * 60 * 1000, // 5 minutes
+        gcTime: 10 * 60 * 1000,   // 10 minutes cache
+        refetchOnWindowFocus: false,
+        refetchOnMount: false,
+        refetchOnReconnect: false
     });
 
     // Upload Mutation with Global Cache Invalidation
@@ -89,6 +97,17 @@ const MyResumesView = ({ setActiveTab, setPreSelectedCompareIds }) => {
         r.filename.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    const totalPages = Math.ceil(filteredResumes.length / itemsPerPage);
+    const paginatedResumes = filteredResumes.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
+    const handleSearchChange = (e) => {
+        setSearchQuery(e.target.value);
+        setCurrentPage(1);
+    };
+
     const toggleSelection = (id) => {
         setSelectedIds(prev => 
             prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
@@ -116,7 +135,7 @@ const MyResumesView = ({ setActiveTab, setPreSelectedCompareIds }) => {
     };
 
     return (
-        <div className="w-full space-y-8 theme-transition">
+        <div className="w-full space-y-4 theme-transition">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
                     <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
@@ -132,7 +151,7 @@ const MyResumesView = ({ setActiveTab, setPreSelectedCompareIds }) => {
                 </label>
             </div>
 
-            <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-3xl p-6 shadow-subtle space-y-6">
+            <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-3xl p-4 shadow-subtle space-y-4">
                 <div className="relative">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                     <input 
@@ -140,7 +159,7 @@ const MyResumesView = ({ setActiveTab, setPreSelectedCompareIds }) => {
                         placeholder="Search your vault..."
                         className="w-full pl-10 pr-4 py-2.5 bg-slate-50/50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:ring-4 focus:ring-accent-500/5 focus:border-accent-500 transition-all outline-none"
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={handleSearchChange}
                     />
                 </div>
 
@@ -161,7 +180,7 @@ const MyResumesView = ({ setActiveTab, setPreSelectedCompareIds }) => {
                                 </div>
                             </div>
                         ) : (
-                            filteredResumes.map((r, idx) => {
+                            paginatedResumes.map((r, idx) => {
                                 const isSelected = selectedIds.includes(r.id);
                                 return (
                                     <motion.div
@@ -170,17 +189,17 @@ const MyResumesView = ({ setActiveTab, setPreSelectedCompareIds }) => {
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ delay: idx * 0.05 }}
                                         onClick={() => toggleSelection(r.id)}
-                                        className={`p-5 rounded-2xl transition-all group relative overflow-hidden cursor-pointer border ${
+                                        className={`p-4 rounded-2xl transition-all group relative overflow-hidden cursor-pointer border ${
                                             isSelected
                                                 ? 'bg-blue-50 dark:bg-accent-500/10 border-blue-500 dark:border-accent-500 ring-2 ring-blue-500/20'
                                                 : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-accent-500/50 hover:shadow-md shadow-sm'
                                         }`}
                                     >
                                         <div className="flex items-start justify-between relative z-10">
-                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
                                                 isSelected ? 'bg-blue-500 text-white' : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 group-hover:bg-slate-900 dark:group-hover:bg-accent-600 group-hover:text-white'
                                             }`}>
-                                                <FileText className="w-6 h-6" />
+                                                <FileText className="w-5 h-5" />
                                             </div>
                                             
                                             <div className="flex items-center gap-2">
@@ -193,8 +212,8 @@ const MyResumesView = ({ setActiveTab, setPreSelectedCompareIds }) => {
                                             </div>
                                         </div>
                                         
-                                        <div className="mt-4 relative z-10">
-                                            <h4 className="font-bold text-slate-900 dark:text-slate-100 text-sm truncate mb-1 pr-8">{r.filename}</h4>
+                                        <div className="mt-3 relative z-10">
+                                            <h4 className="font-bold text-slate-900 dark:text-slate-100 text-sm truncate mb-0.5 pr-8">{r.filename}</h4>
                                             <div className="flex items-center text-[10px] text-slate-400 dark:text-slate-500 font-medium">
                                                 <Calendar className="w-3 h-3 mr-1" />
                                                 {parseDateTime(r.created_at).toLocaleDateString()}
@@ -242,6 +261,14 @@ const MyResumesView = ({ setActiveTab, setPreSelectedCompareIds }) => {
                         )}
                     </AnimatePresence>
                 </div>
+                
+                <PaginationControls
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    totalItems={filteredResumes.length}
+                    itemsPerPage={itemsPerPage}
+                />
             </div>
             {/* Floating Action Bar for Compare */}
             <AnimatePresence>

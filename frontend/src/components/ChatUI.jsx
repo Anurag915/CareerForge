@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import api from '../services/api';
+import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Send,
@@ -36,26 +37,26 @@ const ChatUI = () => {
   // Computed local flag to restrict animations STRICTLY to the correct tab only
   const isSending = !!loadingSessionId && (loadingSessionId === activeSessionId || (loadingSessionId === 'creating' && !activeSessionId));
 
-  const [resumes, setResumes] = useState([]);
+  // Shared query cache with Vault and Comparison
+  const { data: resumes = [] } = useQuery({
+      queryKey: ['resumes'],
+      queryFn: async () => {
+          const res = await api.get('/resumes');
+          return res.data;
+      },
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000,   // 10 minutes cache
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+      refetchOnReconnect: false
+  });
+
   // Default local active context (passed voluntarily alongside messages)
   const [selectedResumeId, setSelectedResumeId] = useState("global");
   const [input, setInput] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   
   const scrollRef = useRef(null);
-
-  // Fetch context vault (Resumes) on Mount
-  useEffect(() => {
-    const fetchResumes = async () => {
-      try {
-        const res = await api.get('/resumes');
-        setResumes(res.data);
-      } catch (err) {
-        console.error("Failed to load context vault:", err);
-      }
-    };
-    fetchResumes();
-  }, []);
 
   // Auto Scroll Logic
   useEffect(() => {
