@@ -110,6 +110,23 @@ function App() {
   
   const [preSelectedCompareIds, setPreSelectedCompareIds] = useState([]);
 
+  // Sidebar Collapse State
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarUserPref, setSidebarUserPref] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === "copilot" || activeTab === "chat") {
+      setSidebarCollapsed(true);
+    } else {
+      setSidebarCollapsed(sidebarUserPref);
+    }
+  }, [activeTab, sidebarUserPref]);
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(!sidebarCollapsed);
+    setSidebarUserPref(!sidebarCollapsed);
+  };
+
   useEffect(() => {
     localStorage.setItem("activeTab", activeTab);
   }, [activeTab]);
@@ -355,6 +372,8 @@ function App() {
         onTabClick={handleTabClick} 
         user={user} 
         logout={logout}
+        collapsed={sidebarCollapsed}
+        onToggle={toggleSidebar}
       />
 
       {/* Main App Canvas */}
@@ -367,6 +386,8 @@ function App() {
           theme={theme} 
           toggleTheme={toggleTheme} 
           onTabClick={handleTabClick}
+          sidebarCollapsed={sidebarCollapsed}
+          toggleSidebar={toggleSidebar}
         />
 
         {/* Scrollable Content Area */}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Search, Sun, Moon, Bell, Settings, CreditCard, LogOut, User, Shield 
@@ -19,8 +19,37 @@ const parseDateTime = (str) => {
 const TopNavbar = ({ user, logout, theme, toggleTheme, onTabClick }) => {
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const [notifOpen, setNotifOpen] = useState(false);
+    const menuRef = useRef(null);
+    const notifRef = useRef(null);
     const queryClient = useQueryClient();
     const navigate = useNavigate();
+
+    // Handle Click Outside and Escape Key
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (menuRef.current && !menuRef.current.contains(event.target)) {
+                setIsUserMenuOpen(false);
+            }
+            if (notifRef.current && !notifRef.current.contains(event.target)) {
+                setNotifOpen(false);
+            }
+        };
+
+        const handleEscape = (event) => {
+            if (event.key === 'Escape') {
+                setIsUserMenuOpen(false);
+                setNotifOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('keydown', handleEscape);
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('keydown', handleEscape);
+        };
+    }, []);
 
     // Intelligent Caching: Fetch unread counts with lazy revalidation
     const { data: unreadCountData } = useQuery({
@@ -98,7 +127,7 @@ const TopNavbar = ({ user, logout, theme, toggleTheme, onTabClick }) => {
                 </button>
 
                 {/* Notifications */}
-                <div className="relative">
+                <div className="relative" ref={notifRef}>
                     <button 
                         onClick={() => {
                             setNotifOpen(!notifOpen);
@@ -167,7 +196,7 @@ const TopNavbar = ({ user, logout, theme, toggleTheme, onTabClick }) => {
 
                 {/* Profile */}
                 {user ? (
-                    <div className="relative pl-4 border-l border-slate-200 dark:border-slate-800">
+                    <div className="relative pl-4 border-l border-slate-200 dark:border-slate-800" ref={menuRef}>
                         <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
@@ -188,10 +217,8 @@ const TopNavbar = ({ user, logout, theme, toggleTheme, onTabClick }) => {
 
                         <AnimatePresence>
                             {isUserMenuOpen && (
-                                <>
-                                    <div className="fixed inset-0 z-40" onClick={() => setIsUserMenuOpen(false)} />
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                                <motion.div
+                                    initial={{ opacity: 0, y: 15, scale: 0.95 }}
                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                         exit={{ opacity: 0, y: 15, scale: 0.95 }}
                                         className="absolute right-0 mt-3 w-64 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden"
@@ -236,8 +263,7 @@ const TopNavbar = ({ user, logout, theme, toggleTheme, onTabClick }) => {
                                                 <span>Sign Out</span>
                                             </button>
                                         </div>
-                                    </motion.div>
-                                </>
+                                </motion.div>
                             )}
                         </AnimatePresence>
                     </div>
