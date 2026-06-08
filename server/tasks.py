@@ -43,7 +43,8 @@ def analyze_resume_job(job_id, data, user_id):
                 "filename": data.get('filename'),
                 "raw_text": text,
                 "doc_type": "resume",
-                "sections": sections
+                "sections": sections,
+                "pdf_url": data.get('pdf_url')
             }, user_id)
         
         db.update_job_status(job_id, 'Matching with job description', 60)
@@ -75,6 +76,7 @@ def analyze_resume_job(job_id, data, user_id):
         result = {
             "resume_id": resume_id,
             "filename": data.get('filename'),
+            "pdf_url": data.get('pdf_url'),
             "sections": sections,
             **analysis_data
         }

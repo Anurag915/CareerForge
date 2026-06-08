@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import api from "./services/api";
 import { io } from "socket.io-client";
 import { motion, AnimatePresence } from "framer-motion";
+import { useJobTracker } from "./api/queries/useJobTracker";
+import { useUploadResumes } from "./api/mutations/useUploadResumes";
 import { Toaster, toast } from "sonner";
 import {
   Routes,
@@ -11,7 +13,7 @@ import {
   Navigate,
 } from "react-router-dom";
 import UploadForm from "./components/UploadForm";
-import ResultCard from "./components/ResultCard";
+import AnalysisDashboard from "./components/AnalysisDashboard";
 import LoadingScreen from "./components/LoadingScreen";
 import HistoryView from "./components/HistoryView";
 import ChatUI from "./components/ChatUI";
@@ -101,9 +103,14 @@ const ProtectedRoute = ({ children, requireRole }) => {
 };
 
 function App() {
-  const [activeTab, setActiveTab] = useState("analyze");
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem("activeTab") || "analyze";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("activeTab", activeTab);
+  }, [activeTab]);
   const [loading, setLoading] = useState(false);
-  const [fetchingResult, setFetchingResult] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const addToast = (message, type = "info") => {
     if (type === "success") {
@@ -117,97 +124,17 @@ function App() {
 
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
-  const [processingQueue, setProcessingQueue] = useState([]);
 
   const { user, token, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const socketRef = useRef(null);
 
-  // Phase 4: Socket.IO Setup
-  useEffect(() => {
-    socketRef.current = io(
-      import.meta.env.VITE_API_URL || "http://127.0.0.1:5000",
-    );
-
-    // Phase 5: Job Recovery on mount
-    const recoverJobs = async () => {
-      const savedJobIds = JSON.parse(
-        localStorage.getItem("activeJobIds") || "[]",
-      );
-      if (savedJobIds.length === 0) return;
-
-      const token = localStorage.getItem("accessToken");
-      if (!token) return;
-
-      const recoveredTasks = [];
-
-      for (const jobId of savedJobIds) {
-        try {
-          const res = await api.get(`/api/job/${jobId}`);
-
-          const job = res.data;
-          const createdTime = parseDateTime(job.created_at);
-          const isStale = new Date() - createdTime > 60 * 60 * 1000; // 1 hour threshold
-
-          if (isStale) {
-            removeJobFromPersistence(job.id);
-          } else if (
-            ["completed", "failed", "cancelled"].indexOf(job.status) === -1
-          ) {
-            recoveredTasks.push({
-              id: job.id,
-              name: `Recovered Task (${job.id.substr(0, 4)})`, // Or store names in LS
-              status: job.status,
-              progress: job.progress,
-              message: job.message || "Resuming tracking...",
-            });
-
-            // Re-attach socket listener
-            socketRef.current.on(`job:${job.id}`, (update) => {
-              setProcessingQueue((prev) =>
-                prev.map((t) => (t.id === job.id ? { ...t, ...update } : t)),
-              );
-              if (
-                ["completed", "failed", "cancelled"].indexOf(update.status) !==
-                -1
-              ) {
-                removeJobFromPersistence(job.id);
-              }
-            });
-          }
-        } catch (err) {
-          console.error(`Failed to recover job ${jobId}`, err);
-        }
-      }
-      setProcessingQueue(recoveredTasks);
-    };
-
-    recoverJobs();
-
-    return () => {
-      if (socketRef.current) socketRef.current.disconnect();
-    };
-  }, []);
-
-  const saveJobToPersistence = (jobId) => {
-    const saved = JSON.parse(localStorage.getItem("activeJobIds") || "[]");
-    if (!saved.includes(jobId)) {
-      localStorage.setItem("activeJobIds", JSON.stringify([...saved, jobId]));
-    }
-  };
-
-  const removeJobFromPersistence = (jobId) => {
-    const saved = JSON.parse(localStorage.getItem("activeJobIds") || "[]");
-    localStorage.setItem(
-      "activeJobIds",
-      JSON.stringify(saved.filter((id) => id !== jobId)),
-    );
-  };
+  // Use the new React Query-based job tracker hook
+  const { queue: processingQueue, addJobToQueue } = useJobTracker();
+  const { mutateAsync: uploadResume } = useUploadResumes();
 
   const handleUpload = async (files, jobDescription) => {
-    // Phase 4: Non-blocking with Real-time Socket Updates
     setIsUploading(true);
     setError(null);
 
@@ -217,72 +144,33 @@ function App() {
 
     try {
       const uploadPromises = files.map(async (file) => {
-        const formData = new FormData();
-        formData.append("resume", file);
-        formData.append("job_description", jobDescription);
-
-        // 1. Start the Job
-        const res = await api.post("/analyze-advanced", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-
-        const jobId = res.data.jobId;
-        saveJobToPersistence(jobId);
-
-        // 2. Add to Local Queue with initial status
-        const newTask = {
-          id: jobId,
-          name: file.name,
-          status: "Upload",
-          progress: 10,
-          message: "Initializing...",
-        };
-        setProcessingQueue((prev) => [...prev, newTask]);
-
-        // Trigger success toast for successful submission
-        addToast(`"${file.name}" enqueued successfully!`, "success");
-
-        // 3. Listen for Real-time Socket Updates
-        if (socketRef.current) {
-          socketRef.current.on(`job:${jobId}`, (update) => {
-            setProcessingQueue((prev) =>
-              prev.map((t) => (t.id === jobId ? { ...t, ...update } : t)),
-            );
-
-            if (update.status === "completed") {
-              addToast(`Analysis complete for "${file.name}"!`, "success");
-              removeJobFromPersistence(jobId);
-              socketRef.current.off(`job:${jobId}`);
-            } else if (update.status === "failed") {
-              addToast(`Analysis failed for "${file.name}".`, "error");
-              removeJobFromPersistence(jobId);
-              socketRef.current.off(`job:${jobId}`);
-            } else if (update.status === "cancelled") {
-              addToast(`Terminated processing for "${file.name}".`, "info");
-              removeJobFromPersistence(jobId);
-              socketRef.current.off(`job:${jobId}`);
-            }
-          });
+        try {
+          const res = await uploadResume({ file, jobDescription });
+          const jobId = res.data.jobId;
+          
+          addJobToQueue(jobId, file.name);
+          addToast(`"${file.name}" enqueued successfully!`, "success");
+          return res.data;
+        } catch (err) {
+          addToast(`Failed to enqueue "${file.name}".`, "error");
+          throw err;
         }
-
-        return res.data;
       });
 
-      await Promise.all(uploadPromises);
-      setIsUploading(false);
+      await Promise.allSettled(uploadPromises);
     } catch (err) {
       console.error("Upload error:", err);
       const errorMsg =
         err.response?.data?.error ||
         "Batch Analysis Failed: One or more files could not be processed.";
       addToast(errorMsg, "error");
+    } finally {
       setIsUploading(false);
     }
   };
 
   const handleViewJobResult = async (jobId) => {
     try {
-      setFetchingResult(true);
       const res = await api.get(`/api/job/${jobId}`);
       if (res.data.status === "completed" && res.data.result) {
         setResults(res.data.result);
@@ -291,8 +179,6 @@ function App() {
     } catch (err) {
       console.error("Failed to load job result:", err);
       addToast("Could not retrieve job results. Please try again.", "error");
-    } finally {
-      setFetchingResult(false);
     }
   };
 
@@ -310,8 +196,6 @@ function App() {
   };
 
   const renderDashboard = () => {
-    if (fetchingResult) return <LoadingScreen />;
-
     switch (activeTab) {
       case "chat":
         return <ChatUI />;
@@ -335,7 +219,7 @@ function App() {
         return <MyResumesView />;
       default:
         return results ? (
-          <ResultCard results={results} onReset={handleReset} />
+          <AnalysisDashboard results={results} onBack={handleReset} />
         ) : (
           <div className="max-w-[1800px] mx-auto w-full px-6 lg:px-12 py-6 sm:py-12">
             {/* SaaS Dashboard Header */}

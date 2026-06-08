@@ -52,6 +52,7 @@ def init_db():
             projects TEXT,
             achievements TEXT,
             other_sections TEXT,
+            pdf_url TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
@@ -134,6 +135,7 @@ def init_db():
     cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token_expires TIMESTAMP")
     cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT")
     cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMP")
+    cursor.execute("ALTER TABLE resumes ADD COLUMN IF NOT EXISTS pdf_url TEXT")
 
     # 2. Refresh Tokens Table
     cursor.execute('''
@@ -195,8 +197,8 @@ def save_resume(resume_data, user_id):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT INTO resumes (id, user_id, filename, raw_text, doc_type, summary, skills, experience, education, projects, achievements, other_sections)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO resumes (id, user_id, filename, raw_text, doc_type, summary, skills, experience, education, projects, achievements, other_sections, pdf_url)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (id) DO UPDATE SET
             user_id = EXCLUDED.user_id,
             filename = EXCLUDED.filename,
@@ -208,7 +210,8 @@ def save_resume(resume_data, user_id):
             education = EXCLUDED.education,
             projects = EXCLUDED.projects,
             achievements = EXCLUDED.achievements,
-            other_sections = EXCLUDED.other_sections
+            other_sections = EXCLUDED.other_sections,
+            pdf_url = COALESCE(EXCLUDED.pdf_url, resumes.pdf_url)
     ''', (
         resume_data['id'], 
         user_id,
@@ -221,7 +224,8 @@ def save_resume(resume_data, user_id):
         resume_data['sections'].get('education', ''),
         resume_data['sections'].get('projects', ''),
         resume_data['sections'].get('achievements', ''),
-        json.dumps(resume_data['sections'].get('other_sections', {}))
+        json.dumps(resume_data['sections'].get('other_sections', {})),
+        resume_data.get('pdf_url')
     ))
     conn.commit()
     conn.close()

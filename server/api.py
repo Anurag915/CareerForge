@@ -23,6 +23,16 @@ import auth_utils
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
+
+cloudinary.config(
+  cloud_name = os.getenv('CLOUDINARY_CLOUD_NAME'),
+  api_key = os.getenv('CLOUDINARY_API_KEY'),
+  api_secret = os.getenv('CLOUDINARY_API_SECRET')
+)
+
 app = Flask(__name__)
 
 # Hardened CORS: enable credential forwarding for secure HTTP-Only cookies!
@@ -419,6 +429,21 @@ def upload_resume():
         if not text.strip():
             return jsonify({"error": "Could not extract text from PDF."}), 400
 
+        pdf_url = None
+        if persist:
+            try:
+                print(f"DEBUG: Attempting Cloudinary upload for {file.filename}")
+                # Upload to Cloudinary securely
+                upload_result = cloudinary.uploader.upload(temp_path, resource_type="auto", folder="CareerForge")
+                pdf_url = upload_result.get("secure_url")
+                print(f"DEBUG: Cloudinary upload successful. secure_url: {pdf_url}")
+                
+                if upload_result and not pdf_url:
+                    print("WARNING: Cloudinary upload succeeded but secure_url is missing from response!")
+                    raise ValueError("Cloudinary upload succeeded but secure_url is missing.")
+            except Exception as ce:
+                print(f"Cloudinary Upload Error: {ce}")
+
         # 1. Parse Sections
         sections = extract_sections(text)
         
@@ -429,7 +454,8 @@ def upload_resume():
             "filename": file.filename,
             "raw_text": text,
             "doc_type": doc_type,
-            "sections": sections
+            "sections": sections,
+            "pdf_url": pdf_url
         }
         if persist:
             db.save_resume(resume_data, user_id)
@@ -441,7 +467,8 @@ def upload_resume():
             "message": "Document uploaded and indexed successfully",
             "resume_id": resume_id,
             "doc_type": doc_type,
-            "filename": file.filename
+            "filename": file.filename,
+            "pdf_url": pdf_url
         })
 
     except Exception as e:
@@ -657,6 +684,7 @@ def analyze_stored_resume(resume_id):
     return jsonify({
         "resume_id": resume_id,
         "filename": resume['filename'],
+        "pdf_url": resume.get('pdf_url'),
         "sections": {
             "summary": resume['summary'],
             "skills": resume['skills'],
@@ -749,6 +777,7 @@ def start_job():
     return jsonify({"jobId": job_id, "status": "pending"})
 
 @app.route('/api/job/<job_id>', methods=['GET'])
+@limiter.exempt
 @auth_required
 def get_job_status(job_id):
     job = db.get_job(job_id)
@@ -767,6 +796,7 @@ def get_job_status(job_id):
     return jsonify(job)
 
 @app.route('/api/jobs', methods=['GET'])
+@limiter.exempt
 @auth_required
 def get_all_jobs():
     user_id = request.user['user_id']
@@ -917,6 +947,14 @@ def analyze_advanced():
     temp_path = os.path.join(data_dir, f"temp_{resume_id}.pdf")
     file.save(temp_path)
     text = extract_text(temp_path)
+    pdf_url = None
+    if persist:
+        try:
+            upload_result = cloudinary.uploader.upload(temp_path, resource_type="auto", folder="CareerForge")
+            pdf_url = upload_result.get("secure_url")
+        except Exception as ce:
+            print(f"Cloudinary Upload Error: {ce}")
+
     if os.path.exists(temp_path): os.remove(temp_path)
 
     # Create Job
@@ -929,7 +967,8 @@ def analyze_advanced():
         "resume_text": text,
         "job_description": job_description,
         "persist": persist,
-        "resume_id": resume_id
+        "resume_id": resume_id,
+        "pdf_url": pdf_url
     }
     
     # PHASE 3: Enqueue to Redis or native fallback thread

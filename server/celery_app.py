@@ -1,5 +1,10 @@
 from celery import Celery
 import os
+from dotenv import load_dotenv
+
+base_dir = os.path.dirname(os.path.abspath(__file__))
+dotenv_path = os.path.join(base_dir, '.env')
+load_dotenv(dotenv_path)
 
 # Phase 3: Scalable Redis-backed Queue
 # This replaces the simple threading model with a robust, scalable job system.
