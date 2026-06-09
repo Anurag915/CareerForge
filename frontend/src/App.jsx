@@ -18,6 +18,8 @@ import LoadingScreen from "./components/LoadingScreen";
 import HistoryView from "./components/HistoryView";
 import ChatUI from "./components/ChatUI";
 import ComparisonDashboard from "./components/ComparisonDashboard";
+import ComparisonHistoryView from "./components/ComparisonHistoryView";
+import ComparisonDetailView from "./components/ComparisonDetailView";
 import AnalysisPage from "./components/AnalysisPage";
 import ABTestingView from "./components/ABTestingView";
 import MyResumesView from "./components/MyResumesView";
@@ -143,6 +145,7 @@ function App() {
   };
 
   const [results, setResults] = useState(null);
+  const [comparisonResults, setComparisonResults] = useState(null);
   const [error, setError] = useState(null);
 
   const { user, token, logout } = useAuth();
@@ -151,7 +154,7 @@ function App() {
   const location = useLocation();
 
   // Use the new React Query-based job tracker hook
-  const { queue: processingQueue, addJobToQueue } = useJobTracker();
+  const { queue: processingQueue, addJobToQueue, addOptimisticJob, upgradeOptimisticJob, removeOptimisticJob } = useJobTracker();
   const { mutateAsync: uploadResume } = useUploadResumes();
 
   const handleUpload = async (files, jobDescription) => {
@@ -164,14 +167,22 @@ function App() {
 
     try {
       const uploadPromises = files.map(async (file) => {
+        const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        
         try {
+          // Immediately add optimistic job
+          addOptimisticJob(tempId, file.name);
+
+          // Perform slow API upload
           const res = await uploadResume({ file, jobDescription });
           const jobId = res.data.jobId;
           
-          addJobToQueue(jobId, file.name);
+          // Upgrade the temp job to a real tracked job
+          upgradeOptimisticJob(tempId, jobId, file.name);
           addToast(`"${file.name}" enqueued successfully!`, "success");
           return res.data;
         } catch (err) {
+          removeOptimisticJob(tempId);
           addToast(`Failed to enqueue "${file.name}".`, "error");
           throw err;
         }
@@ -193,8 +204,16 @@ function App() {
     try {
       const res = await api.get(`/api/job/${jobId}`);
       if (res.data.status === "completed" && res.data.result) {
-        setResults(res.data.result);
-        setActiveTab("analyze"); // Navigate to dashboard
+        // Handle different background job types
+        if (res.data.type === "comparison") {
+            const parsedResults = typeof res.data.result === 'string' ? JSON.parse(res.data.result) : res.data.result;
+            setComparisonResults(parsedResults);
+            setActiveTab("compare");
+        } else {
+            const parsedResults = typeof res.data.result === 'string' ? JSON.parse(res.data.result) : res.data.result;
+            setResults(parsedResults);
+            setActiveTab("analyze");
+        }
       }
     } catch (err) {
       console.error("Failed to load job result:", err);
@@ -204,6 +223,7 @@ function App() {
 
   const handleReset = () => {
     setResults(null);
+    setComparisonResults(null);
     setError(null);
   };
 
@@ -232,7 +252,9 @@ function App() {
           </ProtectedRoute>
         );
       case "compare":
-        return <ComparisonDashboard preSelectedIds={preSelectedCompareIds} />;
+        return <ComparisonDashboard preSelectedIds={preSelectedCompareIds} initialData={comparisonResults} />;
+      case "comparison_history":
+        return <ComparisonHistoryView onViewResult={handleViewJobResult} />;
       case "history":
       case "jobs":
         return <JobsView onViewResult={handleViewJobResult} />;
@@ -434,6 +456,7 @@ function App() {
             <Route path="/forgot-password" element={<Navigate to="/" replace />} />
             <Route path="/reset-password" element={<Navigate to="/" replace />} />
             <Route path="/analysis/:id" element={<AnalysisPage />} />
+            <Route path="/comparisons/:id" element={<ComparisonDetailView />} />
             <Route path="/" element={renderDashboard()} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

@@ -22,6 +22,7 @@ from celery_app import celery_app
 import auth_utils
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+import comparison
 
 import cloudinary
 import cloudinary.uploader
@@ -699,7 +700,6 @@ def analyze_stored_resume(resume_id):
 
 @app.route('/compare', methods=['POST'])
 @auth_required
-@require_role('hiring_manager')
 def compare_resumes():
     data = request.json
     resume_ids = data.get('resume_ids', [])
@@ -712,17 +712,20 @@ def compare_resumes():
         return jsonify({"error": "At least two resume_ids are required for comparison"}), 400
         
     user_id = request.user['user_id']
-    resume_list = []
-    for rid in resume_ids:
-        r = db.get_resume(rid, user_id)
-        if r: resume_list.append(r)
-        
-    if not resume_list:
-        return jsonify({"error": "No valid resumes found for provided IDs"}), 404
-        
-    top_n = data.get('top_n')
-    results = comparison.compare_resumes(resume_list, job_description, top_n)
-    return jsonify(results)
+    job_id = db.create_job(user_id, 'comparison', name=f"Comparing {len(resume_ids)} Candidates")
+    
+    # Initialize persistent comparison record synchronously
+    db.create_comparison_record(job_id, user_id, job_description)
+    
+    # Dispatch into the cluster or fallback thread
+    from tasks import compare_resumes_job
+    dispatch_job(compare_resumes_job, job_id, data, user_id)
+    
+    return jsonify({
+        "jobId": job_id,
+        "status": "pending",
+        "message": "Comparison background task created successfully"
+    })
 
 @app.route('/compare-my-resumes', methods=['POST'])
 @auth_required
@@ -757,6 +760,22 @@ def get_analysis_history():
     user_id = request.user['user_id']
     history = db.get_history(user_id)
     return jsonify(history)
+
+@app.route('/api/comparisons', methods=['GET'])
+@auth_required
+def get_comparisons():
+    user_id = request.user['user_id']
+    history = db.get_comparison_history(user_id)
+    return jsonify(history)
+
+@app.route('/api/comparisons/<comparison_id>', methods=['GET'])
+@auth_required
+def get_comparison_detail(comparison_id):
+    user_id = request.user['user_id']
+    detail = db.get_comparison_detail(comparison_id, user_id)
+    if not detail:
+        return jsonify({"error": "Comparison not found or unauthorized"}), 404
+    return jsonify(detail)
 
 # --- LEGACY CHAT REMOVED (REPLACED WITH SESSIONS ABOVE) ---
 

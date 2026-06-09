@@ -3,6 +3,7 @@ import api from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, Clock, CheckCircle2, AlertCircle, Loader2, RefreshCw, Ban, ChevronDown, ChevronUp, ArrowUpDown, Eye, Sparkles } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useJobTracker } from '../api/queries/useJobTracker';
 import PaginationControls from './PaginationControls';
 
 const parseDateTime = (str) => {
@@ -25,6 +26,7 @@ const formatDate = (dateString) => {
 
 const JobsView = ({ onViewResult }) => {
     const queryClient = useQueryClient();
+    const { queue: processingQueue } = useJobTracker();
     const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'desc' });
     const [expandedRows, setExpandedRows] = useState(new Set());
     const [fetchingJobId, setFetchingJobId] = useState(null);
@@ -122,7 +124,21 @@ const JobsView = ({ onViewResult }) => {
         }
     };
 
-    const sortedJobs = [...jobs].sort((a, b) => {
+    // Merge API jobs with real-time tracking queue
+    const combinedJobsMap = new Map();
+    jobs.forEach(j => combinedJobsMap.set(j.id, j));
+    processingQueue.forEach(pq => {
+        const existing = combinedJobsMap.get(pq.id);
+        combinedJobsMap.set(pq.id, {
+            ...existing,
+            ...pq,
+            created_at: existing?.created_at || new Date().toISOString()
+        });
+    });
+    
+    const combinedJobs = Array.from(combinedJobsMap.values());
+
+    const sortedJobs = [...combinedJobs].sort((a, b) => {
         let aValue = a[sortConfig.key];
         let bValue = b[sortConfig.key];
 
@@ -147,17 +163,17 @@ const JobsView = ({ onViewResult }) => {
         return sortConfig.direction === 'asc' ? <ChevronUp className="w-3.5 h-3.5 text-blue-500" /> : <ChevronDown className="w-3.5 h-3.5 text-blue-500" />;
     };
 
-    if (loading) return (
+    if (loading && combinedJobs.length === 0) return (
         <div className="w-full py-12 flex flex-col items-center justify-center space-y-4">
             <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
             <p className="text-sm text-slate-500 font-medium italic">Loading your processing history...</p>
         </div>
     );
 
-    const totalJobs = jobs.length;
-    const completedJobs = jobs.filter(j => j.status === 'completed').length;
-    const activeJobs = jobs.filter(j => !['completed', 'failed', 'cancelled'].includes(j.status)).length;
-    const failedJobs = jobs.filter(j => j.status === 'failed').length;
+    const totalJobs = combinedJobs.length;
+    const completedJobs = combinedJobs.filter(j => j.status === 'completed').length;
+    const activeJobs = combinedJobs.filter(j => !['completed', 'failed', 'cancelled'].includes(j.status)).length;
+    const failedJobs = combinedJobs.filter(j => j.status === 'failed').length;
 
     return (
         <div className="w-full space-y-8 pb-10 theme-transition">

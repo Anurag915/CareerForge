@@ -101,9 +101,10 @@ const Navbar = ({ activeTab, onTabClick, user, logout, processingQueue = [] }) =
         { id: 'analyze', label: 'Dashboard', icon: Search },
         { id: 'chat', label: 'AI Chat', icon: MessageSquare },
         ...(user?.role === 'candidate' ? [{ id: 'abtest', label: 'Optimization', icon: TrendingUp }] : []),
-        ...(user?.role === 'hiring_manager' ? [{ id: 'compare', label: 'Comparison', icon: Columns }] : []),
+        { id: 'compare', label: 'Comparison', icon: Columns },
+        { id: 'comparison_history', label: 'Compare History', icon: History },
         { id: 'resumes', label: 'Library', icon: FolderOpen },
-        { id: 'history', label: 'History', icon: History },
+        { id: 'history', label: 'ATS History', icon: History },
         { id: 'jobs', label: 'Queue', icon: Activity },
     ], [user?.role]);
 

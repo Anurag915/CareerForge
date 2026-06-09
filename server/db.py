@@ -148,6 +148,32 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         )
     ''')
+
+    # 3. Persistent Comparison History Tables
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS comparison_jobs (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            status TEXT DEFAULT 'processing',
+            job_description TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            completed_at TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS comparison_results (
+            id SERIAL PRIMARY KEY,
+            comparison_id TEXT NOT NULL,
+            resume_id TEXT NOT NULL,
+            score REAL,
+            rank INTEGER,
+            analysis_data TEXT,
+            FOREIGN KEY (comparison_id) REFERENCES comparison_jobs (id) ON DELETE CASCADE,
+            FOREIGN KEY (resume_id) REFERENCES resumes (id) ON DELETE CASCADE
+        )
+    ''')
     
     conn.commit()
     conn.close()
@@ -398,16 +424,105 @@ def get_job(job_id):
     cursor.execute('SELECT * FROM jobs WHERE id = %s', (job_id,))
     row = cursor.fetchone()
     conn.close()
-    if row:
-        res = dict(row)
-        if res.get('result'):
-            if isinstance(res['result'], str):
-                try:
-                    res['result'] = json.loads(res['result'])
-                except:
-                    pass
-        return res
-    return None
+    return dict(row) if row else None
+
+# --- COMPARISON HISTORY ---
+
+def create_comparison_record(comparison_id, user_id, job_description):
+    import datetime
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    now = datetime.datetime.utcnow()
+    cursor.execute('''
+        INSERT INTO comparison_jobs (id, user_id, status, job_description, created_at)
+        VALUES (%s, %s, 'processing', %s, %s)
+    ''', (comparison_id, user_id, job_description, now))
+    conn.commit()
+    conn.close()
+
+def save_comparison_results(comparison_id, results_payload):
+    import datetime
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    now = datetime.datetime.utcnow()
+    
+    # Update overarching job status
+    cursor.execute('''
+        UPDATE comparison_jobs SET status = 'completed', completed_at = %s WHERE id = %s
+    ''', (now, comparison_id))
+    
+    metrics = results_payload.get('metrics', [])
+    llm_analysis = results_payload.get('llm_analysis', {})
+    
+    for rank, candidate in enumerate(metrics, start=1):
+        score = candidate.get('ats_score')
+        resume_id = candidate.get('id')
+        
+        cursor.execute('''
+            INSERT INTO comparison_results (comparison_id, resume_id, score, rank, analysis_data)
+            VALUES (%s, %s, %s, %s, %s)
+        ''', (comparison_id, resume_id, score, rank, json.dumps(results_payload)))
+        
+    conn.commit()
+    conn.commit()
+    conn.close()
+
+def get_comparison_history(user_id):
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute('''
+        SELECT c.id, c.status, c.job_description, c.created_at, COUNT(r.id) as resumes_count
+        FROM comparison_jobs c
+        LEFT JOIN comparison_results r ON c.id = r.comparison_id
+        WHERE c.user_id = %s
+        GROUP BY c.id
+        ORDER BY c.created_at DESC
+    ''', (user_id,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+def get_comparison_detail(comparison_id, user_id):
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    
+    # Verify ownership and get base job
+    cursor.execute('''
+        SELECT * FROM comparison_jobs 
+        WHERE id = %s AND user_id = %s
+    ''', (comparison_id, user_id))
+    job = cursor.fetchone()
+    
+    if not job:
+        conn.close()
+        return None
+        
+    job_dict = dict(job)
+    
+    # Get all results for this job
+    cursor.execute('''
+        SELECT cr.*, r.filename 
+        FROM comparison_results cr
+        JOIN resumes r ON cr.resume_id = r.id
+        WHERE cr.comparison_id = %s
+        ORDER BY cr.rank ASC
+    ''', (comparison_id,))
+    results = cursor.fetchall()
+    conn.close()
+    
+    # The actual deep metrics JSON was stored in analysis_data
+    # We can reconstruct it or just pass the rows
+    job_dict['results'] = []
+    for r in results:
+        res_dict = dict(r)
+        if res_dict.get('analysis_data'):
+            try:
+                res_dict['analysis_data'] = json.loads(res_dict['analysis_data'])
+            except:
+                pass
+        job_dict['results'].append(res_dict)
+        
+    return job_dict
 
 # --- NOTIFICATION UTILS ---
 

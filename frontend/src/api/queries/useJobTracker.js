@@ -139,5 +139,31 @@ export const useJobTracker = () => {
     attachSocketListener(jobId, fileName);
   };
 
-  return { queue, isLoading, addJobToQueue, removeJobFromPersistence };
+  const addOptimisticJob = (tempId, fileName) => {
+    const newTask = {
+      id: tempId,
+      name: fileName,
+      status: "uploading",
+      progress: 5,
+      message: "Uploading & Initializing...",
+      isOptimistic: true
+    };
+    queryClient.setQueryData(JOB_QUEUE_QUERY_KEY, (prev = []) => [...prev, newTask]);
+  };
+
+  const upgradeOptimisticJob = (tempId, realJobId, fileName) => {
+    // Replace temp job with real job ID
+    queryClient.setQueryData(JOB_QUEUE_QUERY_KEY, (prev = []) => {
+      return prev.map(t => t.id === tempId ? { ...t, id: realJobId, isOptimistic: false, status: "Upload", progress: 10, message: "Initializing analysis..." } : t);
+    });
+    
+    saveJobToPersistence(realJobId);
+    attachSocketListener(realJobId, fileName);
+  };
+
+  const removeOptimisticJob = (tempId) => {
+    queryClient.setQueryData(JOB_QUEUE_QUERY_KEY, (prev = []) => prev.filter(t => t.id !== tempId));
+  };
+
+  return { queue, isLoading, addJobToQueue, addOptimisticJob, upgradeOptimisticJob, removeOptimisticJob, removeJobFromPersistence };
 };

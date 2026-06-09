@@ -163,3 +163,53 @@ def optimize_resumes_job(job_id, data, user_id):
         socket_emitter.emit(f'job:{job_id}', {'status': 'failed', 'progress': 0, 'error': friendly_error})
         return {"status": "error", "error": friendly_error}
 
+@celery_app.task(name='tasks.compare_resumes_job')
+def compare_resumes_job(job_id, data, user_id):
+    """
+    Asynchronous task for Hiring Manager / Candidate multi-resume comparison.
+    """
+    try:
+        def update_status(msg, prog):
+            db.update_job_status(job_id, msg, prog)
+            socket_emitter.emit(f'job:{job_id}', {'status': msg, 'progress': prog})
+            
+        update_status('✓ Resumes Loaded', 15)
+        
+        resume_ids = data.get('resume_ids', [])
+        job_description = data.get('job_description', '')
+        top_n = data.get('top_n')
+        
+        resume_list = []
+        for rid in resume_ids:
+            r = db.get_resume(rid, user_id)
+            if r:
+                resume_list.append(r)
+                
+        if len(resume_list) < 2:
+            raise ValueError("Insufficient accessible resumes for comparison.")
+            
+        j_check = db.get_job(job_id)
+        if j_check and j_check.get('status') == 'cancelled':
+            return {"status": "cancelled", "job_id": job_id}
+        
+        results = comparison.compare_resumes(resume_list, job_description, top_n, update_status)
+        
+        update_status('✓ Final Recommendation Generated', 95)
+        
+        db.update_job_result(job_id, results)
+        db.save_comparison_results(job_id, results)
+        
+        notif_msg = f"Your Candidate AI Comparison is ready."
+        db.create_notification(user_id, job_id, notif_msg)
+        socket_emitter.emit('notification:new', {'user_id': user_id, 'message': notif_msg}, room=f"user_{user_id}")
+        
+        socket_emitter.emit(f'job:{job_id}', {'status': 'completed', 'progress': 100, 'result': results})
+        return {"status": "success", "job_id": job_id}
+        
+    except Exception as e:
+        print(f"CELERY COMPARISON ERROR: {e}")
+        friendly_error = f"We encountered an error during comparison: {str(e)}"
+        db.update_job_status(job_id, 'failed', 0)
+        socket_emitter.emit(f'job:{job_id}', {'status': 'failed', 'progress': 0, 'error': friendly_error})
+        return {"status": "error", "error": friendly_error}
+

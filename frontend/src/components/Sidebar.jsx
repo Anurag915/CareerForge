@@ -14,6 +14,7 @@ const Sidebar = ({ activeTab, onTabClick, user, collapsed, onToggle }) => {
         { id: 'library', label: 'Resume Library', icon: FolderOpen },
         { id: 'history', label: 'Analysis History', icon: History },
         { id: 'compare', label: 'Compare Resumes', icon: Columns },
+        { id: 'comparison_history', label: 'Comparison History', icon: History },
         { id: 'copilot', label: 'Resume Copilot', icon: MessageSquare },
     ];
 

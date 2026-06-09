@@ -5,7 +5,7 @@ import { Columns, Check, AlertCircle, Sparkles, UserPlus, Trash2, BrainCircuit }
 import PaginationControls from './PaginationControls';
 import { useQuery } from '@tanstack/react-query';
 
-const ComparisonDashboard = ({ preSelectedIds = [] }) => {
+const ComparisonDashboard = ({ preSelectedIds = [], initialData = null }) => {
     // Shared query cache with MyResumesView
     const { data: resumes = [] } = useQuery({
         queryKey: ['resumes'],
@@ -21,11 +21,12 @@ const ComparisonDashboard = ({ preSelectedIds = [] }) => {
     });
 
     const [selectedIds, setSelectedIds] = useState(preSelectedIds);
-    const [comparisonData, setComparisonData] = useState(null);
+    const [comparisonData, setComparisonData] = useState(initialData);
     const [jobDescription, setJobDescription] = useState('');
     const [topN, setTopN] = useState(0); // 0 means all
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [successMsg, setSuccessMsg] = useState(null);
     const [tempResumes, setTempResumes] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 12;
@@ -35,6 +36,12 @@ const ComparisonDashboard = ({ preSelectedIds = [] }) => {
             setSelectedIds(preSelectedIds);
         }
     }, [preSelectedIds]);
+
+    useEffect(() => {
+        if (initialData) {
+            setComparisonData(initialData);
+        }
+    }, [initialData]);
 
     const toggleSelection = (id) => {
         setSelectedIds(prev => 
@@ -54,7 +61,7 @@ const ComparisonDashboard = ({ preSelectedIds = [] }) => {
             for (const file of files) {
                 const formData = new FormData();
                 formData.append('resume', file);
-                formData.append('persist', 'false');
+                formData.append('persist', 'true');
                 
                 const res = await api.post('/analyze-advanced', formData);
                 newTemps.push({
@@ -78,13 +85,20 @@ const ComparisonDashboard = ({ preSelectedIds = [] }) => {
         if (selectedIds.length < 2 || !jobDescription.trim()) return;
         setLoading(true);
         setError(null);
+        setSuccessMsg(null);
         try {
             const res = await api.post('/compare', { 
                 resume_ids: selectedIds,
                 job_description: jobDescription,
                 top_n: topN > 0 ? parseInt(topN) : null
             });
-            setComparisonData(res.data);
+            if (res.data.jobId) {
+                setSuccessMsg("Comparison started successfully. You can leave this page and track progress in Comparison History.");
+                // Optionally clear selections
+                // setSelectedIds([]);
+            } else {
+                setComparisonData(res.data);
+            }
         } catch (err) {
             setError(err.response?.data?.error || "Comparison failed");
         } finally {
@@ -110,26 +124,47 @@ const ComparisonDashboard = ({ preSelectedIds = [] }) => {
                     </h2>
                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Select multiple resumes and provide a JD to compare candidates side-by-side.</p>
                 </div>
-                <div className="flex items-center space-x-3">
-                    <label className="cursor-pointer bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-900 transition-all shadow-subtle flex items-center space-x-2">
-                        <input type="file" className="hidden" multiple onChange={handleBatchUpload} />
-                        <UserPlus className="w-4 h-4" />
-                        <span>Quick Batch Upload</span>
-                    </label>
-                    <button
-                        onClick={handleCompare}
-                        disabled={selectedIds.length < 2 || !jobDescription.trim() || loading}
-                        className="flex items-center space-x-2 bg-slate-900 dark:bg-accent-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm disabled:opacity-30 shadow-lg hover:shadow-xl transition-all"
-                    >
-                        {loading ? (
-                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                        ) : (
-                            <BrainCircuit className="w-4 h-4" />
-                        )}
-                        <span>Run AI Comparison</span>
-                    </button>
+                <div className="flex flex-col items-end">
+                    <div className="flex items-center space-x-3">
+                        <label className="cursor-pointer bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-900 transition-all shadow-subtle flex items-center space-x-2">
+                            <input type="file" className="hidden" multiple onChange={handleBatchUpload} />
+                            <UserPlus className="w-4 h-4" />
+                            <span>Quick Batch Upload</span>
+                        </label>
+                        <button
+                            onClick={handleCompare}
+                            disabled={selectedIds.length < 2 || !jobDescription.trim() || loading}
+                            className="flex items-center space-x-2 bg-slate-900 dark:bg-accent-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg transition-all hover:bg-slate-800 dark:hover:bg-accent-500 hover:-translate-y-0.5 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-slate-900 dark:disabled:hover:bg-accent-600 disabled:hover:translate-y-0"
+                        >
+                            {loading ? (
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            ) : (
+                                <BrainCircuit className="w-4 h-4" />
+                            )}
+                            <span>Run AI Comparison</span>
+                        </button>
+                    </div>
+                    {selectedIds.length < 2 && (
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-2">
+                            Select at least two resumes to run a comparison.
+                        </p>
+                    )}
                 </div>
             </div>
+
+            {error && (
+                <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-xl border border-red-200 dark:border-red-800/30 flex items-center gap-3">
+                    <AlertCircle className="w-5 h-5 shrink-0" />
+                    <p className="text-sm font-medium">{error}</p>
+                </div>
+            )}
+            
+            {successMsg && (
+                <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-xl border border-emerald-200 dark:border-emerald-800/30 flex items-center gap-3">
+                    <Check className="w-5 h-5 shrink-0" />
+                    <p className="text-sm font-medium">{successMsg}</p>
+                </div>
+            )}
 
             {/* JD & Top N Selection */}
             <div className="grid md:grid-cols-3 gap-4">
