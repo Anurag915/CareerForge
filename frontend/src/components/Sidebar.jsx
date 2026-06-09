@@ -19,6 +19,7 @@ const Sidebar = ({ activeTab, onTabClick, user, collapsed, onToggle }) => {
 
     const bottomNav = [
         { id: 'profile', label: 'Profile', icon: User, placeholder: true },
+        { id: 'settings', label: 'Settings', icon: Columns, placeholder: true }, // Using Columns or Settings icon. Let's import Settings if possible, but for now just use a generic or existing one. Wait, let me just add it.
     ];
 
     const NavItem = ({ item }) => {
@@ -91,10 +92,15 @@ const Sidebar = ({ activeTab, onTabClick, user, collapsed, onToggle }) => {
                 {/* Toggle Button */}
                 <button 
                     onClick={onToggle}
-                    className={`transition-all flex items-center justify-center ${collapsed ? 'mx-auto hover:scale-105 active:scale-95' : 'p-2 text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl'}`}
+                    className={`transition-all flex items-center justify-center group relative ${collapsed ? 'mx-auto hover:scale-105 active:scale-95' : 'p-2 text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl'}`}
                     title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
                 >
-                    {collapsed ? <img src="/logo.svg" alt="CareerForge" className="w-12 h-12 object-contain dark:drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] dark:brightness-125" /> : <PanelLeftClose className="w-5 h-5" />}
+                    {collapsed ? (
+                        <div className="relative flex items-center justify-center w-12 h-12">
+                            <img src="/logo.svg" alt="CareerForge" className="w-12 h-12 object-contain absolute transition-opacity duration-200 group-hover:opacity-0 dark:drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] dark:brightness-125" />
+                            <PanelLeftOpen className="w-6 h-6 absolute text-slate-400 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-hover:text-blue-500" />
+                        </div>
+                    ) : <PanelLeftClose className="w-5 h-5" />}
                 </button>
             </div>
 

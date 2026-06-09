@@ -8,14 +8,14 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    const logout = useCallback(async () => {
-        try {
-            await api.post('/logout'); // Informs server to purge database registry
-        } catch (e) {}
-        
+    const logout = useCallback(() => {
+        // Immediately clear local state for snappy UX
         localStorage.removeItem('accessToken');
         setUser(null);
         delete api.defaults.headers.common['Authorization'];
+
+        // Fire and forget server logout to invalidate session
+        api.post('/logout').catch(() => {});
     }, []);
 
     const login = useCallback((accessToken, userData) => {
