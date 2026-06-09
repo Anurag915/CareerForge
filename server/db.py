@@ -440,6 +440,17 @@ def create_comparison_record(comparison_id, user_id, job_description):
     conn.commit()
     conn.close()
 
+def initialize_comparison_results(comparison_id, resume_ids):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    for rid in resume_ids:
+        cursor.execute('''
+            INSERT INTO comparison_results (comparison_id, resume_id, score, rank, analysis_data)
+            VALUES (%s, %s, NULL, NULL, NULL)
+        ''', (comparison_id, rid))
+    conn.commit()
+    conn.close()
+
 def save_comparison_results(comparison_id, results_payload):
     import datetime
     conn = get_db_connection()
@@ -459,9 +470,10 @@ def save_comparison_results(comparison_id, results_payload):
         resume_id = candidate.get('id')
         
         cursor.execute('''
-            INSERT INTO comparison_results (comparison_id, resume_id, score, rank, analysis_data)
-            VALUES (%s, %s, %s, %s, %s)
-        ''', (comparison_id, resume_id, score, rank, json.dumps(results_payload)))
+            UPDATE comparison_results 
+            SET score = %s, rank = %s, analysis_data = %s
+            WHERE comparison_id = %s AND resume_id = %s
+        ''', (score, rank, json.dumps(results_payload), comparison_id, resume_id))
         
     conn.commit()
     conn.commit()
@@ -471,15 +483,41 @@ def get_comparison_history(user_id):
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     cursor.execute('''
-        SELECT c.id, c.status, c.job_description, c.created_at, COUNT(r.id) as resumes_count
+        SELECT 
+            c.id, 
+            c.status, 
+            c.job_description, 
+            c.created_at, 
+            c.completed_at,
+            j.name as comparison_name,
+            COUNT(r.id) as resumes_count,
+            json_agg(
+                json_build_object(
+                    'id', res.id, 
+                    'filename', res.filename, 
+                    'pdf_url', res.pdf_url, 
+                    'created_at', res.created_at,
+                    'rank', r.rank, 
+                    'score', r.score,
+                    'analysis_data', r.analysis_data
+                )
+            ) as resumes
         FROM comparison_jobs c
+        LEFT JOIN jobs j ON c.id = j.id
         LEFT JOIN comparison_results r ON c.id = r.comparison_id
+        LEFT JOIN resumes res ON r.resume_id = res.id
         WHERE c.user_id = %s
-        GROUP BY c.id
+        GROUP BY c.id, j.name
         ORDER BY c.created_at DESC
     ''', (user_id,))
     rows = cursor.fetchall()
     conn.close()
+    
+    # Process json_agg array to remove the [ {id: null ...} ] edge case when there are no resumes yet
+    for row in rows:
+        if row['resumes'] and len(row['resumes']) == 1 and row['resumes'][0]['id'] is None:
+            row['resumes'] = []
+            
     return [dict(row) for row in rows]
 
 def get_comparison_detail(comparison_id, user_id):

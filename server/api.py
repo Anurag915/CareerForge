@@ -716,6 +716,7 @@ def compare_resumes():
     
     # Initialize persistent comparison record synchronously
     db.create_comparison_record(job_id, user_id, job_description)
+    db.initialize_comparison_results(job_id, resume_ids)
     
     # Dispatch into the cluster or fallback thread
     from tasks import compare_resumes_job
