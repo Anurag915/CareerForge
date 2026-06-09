@@ -22,10 +22,11 @@ const Sidebar = ({ activeTab, onTabClick, user, collapsed, onToggle }) => {
         { id: 'settings', label: 'Settings', icon: Columns, placeholder: true }, // Using Columns or Settings icon. Let's import Settings if possible, but for now just use a generic or existing one. Wait, let me just add it.
     ];
 
-    const NavItem = ({ item }) => {
+    const renderNavItem = (item) => {
         const isActive = activeTab === item.id;
         return (
             <button
+                key={item.id}
                 onClick={() => !item.placeholder && onTabClick(item.id)}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 group relative
                     ${isActive 
@@ -108,12 +109,12 @@ const Sidebar = ({ activeTab, onTabClick, user, collapsed, onToggle }) => {
             <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-4 flex flex-col">
                 <div className="space-y-1">
                     {!collapsed && <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0">Menu</p>}
-                    {mainNav.map(item => <NavItem key={item.id} item={item} />)}
+                    {mainNav.map(item => renderNavItem(item))}
                 </div>
 
                 <div className="mt-auto space-y-0.5 pt-3 border-t border-slate-100 dark:border-slate-900">
                     {!collapsed && <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0">System</p>}
-                    {bottomNav.map(item => <NavItem key={item.id} item={item} />)}
+                    {bottomNav.map(item => renderNavItem(item))}
                 </div>
             </div>
             

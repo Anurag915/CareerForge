@@ -11,6 +11,7 @@ export const AuthProvider = ({ children }) => {
     const logout = useCallback(() => {
         // Immediately clear local state for snappy UX
         localStorage.removeItem('accessToken');
+        localStorage.removeItem('activeTab'); // Wipe view state
         setUser(null);
         delete api.defaults.headers.common['Authorization'];
 
