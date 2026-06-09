@@ -70,26 +70,31 @@ const Sidebar = ({ activeTab, onTabClick, user, collapsed, onToggle }) => {
                     onClick={() => { navigate('/'); onTabClick('dashboard'); }}
                     className={`items-center gap-3 cursor-pointer group overflow-hidden ${collapsed ? 'hidden' : 'flex'}`}
                 >
-                    <div className="shrink-0 bg-blue-600 p-2 rounded-xl shadow-inner text-white">
-                        <Layers className="w-5 h-5" />
-                    </div>
+                    <motion.img 
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        src="/logo.svg" 
+                        alt="CareerForge Icon" 
+                        className="h-12 w-12 object-contain group-hover:scale-105 transition-transform dark:drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] dark:brightness-125" 
+                    />
                     <motion.span 
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -10 }}
-                        className="text-lg font-bold text-slate-900 dark:text-white tracking-tight truncate whitespace-nowrap"
+                        className="text-[1.1rem] font-extrabold tracking-tight truncate whitespace-nowrap font-outfit"
                     >
-                        CareerForge
+                        <span className="text-slate-900 dark:text-white">Career</span><span className="text-blue-500 dark:text-blue-400">Forge</span>
                     </motion.span>
                 </div>
 
                 {/* Toggle Button */}
                 <button 
                     onClick={onToggle}
-                    className={`transition-all ${collapsed ? 'mx-auto shrink-0 bg-blue-600 p-2 rounded-xl shadow-inner text-white hover:bg-blue-700 hover:scale-105 active:scale-95' : 'p-2 text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl'}`}
+                    className={`transition-all flex items-center justify-center ${collapsed ? 'mx-auto hover:scale-105 active:scale-95' : 'p-2 text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl'}`}
                     title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
                 >
-                    {collapsed ? <Layers className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
+                    {collapsed ? <img src="/logo.svg" alt="CareerForge" className="w-12 h-12 object-contain dark:drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] dark:brightness-125" /> : <PanelLeftClose className="w-5 h-5" />}
                 </button>
             </div>
 

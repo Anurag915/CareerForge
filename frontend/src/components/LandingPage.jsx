@@ -28,11 +28,9 @@ const LandingPage = () => {
       <header className="sticky top-0 z-50 w-full border-b border-slate-200/50 dark:border-slate-900/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-md">
         <div className="max-w-[1500px] 2xl:max-w-[1700px] mx-auto px-6 lg:px-12 h-20 flex items-center justify-between">
           <div className="flex items-center space-x-3 group">
-            <div className="relative bg-slate-900 dark:bg-accent-600 p-2 rounded-xl shadow-lg">
-              <Layers className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-lg font-black tracking-wider  text-slate-900 dark:text-white">
-              CareerForge
+            <img src="/logo.svg" alt="CareerForge Icon" className="h-12 w-12 object-contain dark:drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] dark:brightness-125" />
+            <span className="text-2xl font-extrabold tracking-tight font-outfit">
+              <span className="text-slate-900 dark:text-white">Career</span><span className="text-blue-500 dark:text-blue-400">Forge</span>
             </span>
           </div>
 

@@ -87,12 +87,17 @@ const LoginPage = () => {
                 className="w-full max-w-[400px] bg-white/40 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800/50 rounded-[32px] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.12)] p-8 space-y-6 backdrop-blur-xl relative z-10"
             >
                 {/* Brand Logo & Header */}
-                <div className="text-center space-y-2">
-                    <div className="bg-slate-900 dark:bg-accent-600 w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-md shadow-slate-900/10 dark:shadow-accent-600/10 hover:scale-105 transition-all">
-                        <Sparkles className="w-5 h-5 text-white animate-pulse" />
+                <div className="text-center space-y-4">
+                    <div className="flex items-center justify-center gap-4 mb-6">
+                        <img src="/logo.svg" alt="CareerForge Icon" className="h-16 w-16 object-contain dark:drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] dark:brightness-125" />
+                        <span className="text-3xl font-extrabold tracking-tight font-outfit">
+                            <span className="text-slate-900 dark:text-white">Career</span><span className="text-blue-500 dark:text-blue-400">Forge</span>
+                        </span>
                     </div>
-                    <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Welcome Back</h1>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Enter your credentials to access your dashboard.</p>
+                    <div className="space-y-1">
+                        <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Welcome Back</h1>
+                        <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-1 mb-6">AI Resume Analyzer & Copilot</p>
+                    </div>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-5">
