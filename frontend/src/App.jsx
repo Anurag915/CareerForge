@@ -24,6 +24,7 @@ import AnalysisPage from "./components/AnalysisPage";
 import ABTestingView from "./components/ABTestingView";
 import MyResumesView from "./components/MyResumesView";
 import JobsView from "./components/JobsView";
+import RecentAnalyses from "./components/RecentAnalyses";
 import LandingPage from "./components/LandingPage";
 import { useAuth } from "./context/AuthContext";
 import { useTheme } from "./context/ThemeContext";
@@ -373,6 +374,12 @@ function App() {
                 </motion.div>
               ))}
             </div>
+
+            {/* Recent Analyses Section */}
+            <RecentAnalyses 
+              onViewResult={handleViewJobResult} 
+              onViewMore={() => setActiveTab('history')} 
+            />
           </div>
         );
     }
