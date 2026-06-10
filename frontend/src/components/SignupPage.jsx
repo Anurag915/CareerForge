@@ -175,11 +175,11 @@ const SignupPage = () => {
                                             <button
                                                 type="button"
                                                 onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
-                                                className="w-full pl-11 pr-10 py-3.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 dark:focus:border-blue-400 transition-all text-sm text-left text-slate-900 dark:text-slate-100 font-medium flex items-center justify-between shadow-sm"
+                                                className="w-full pl-11 pr-11 py-3.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 dark:focus:border-blue-400 transition-all text-sm text-left text-slate-900 dark:text-slate-100 font-medium shadow-sm relative block"
                                             >
                                                 <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500 pointer-events-none" />
-                                                <span className="truncate">{roles.find(r => r.value === formData.role)?.label}</span>
-                                                <div className={`transition-transform duration-300 ${isRoleDropdownOpen ? 'rotate-180' : ''}`}>
+                                                <span className="truncate block">{roles.find(r => r.value === formData.role)?.label}</span>
+                                                <div className={`absolute right-4 top-1/2 -translate-y-1/2 transition-transform duration-300 pointer-events-none ${isRoleDropdownOpen ? 'rotate-180' : ''}`}>
                                                     <ChevronDown className="w-4 h-4 text-slate-400" />
                                                 </div>
                                             </button>
@@ -192,7 +192,7 @@ const SignupPage = () => {
                                                             initial={{ opacity: 0, y: 10, scale: 0.98 }}
                                                             animate={{ opacity: 1, y: 0, scale: 1 }}
                                                             exit={{ opacity: 0, y: 10, scale: 0.98 }}
-                                                            className="absolute left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 overflow-hidden p-2 space-y-1"
+                                                            className="absolute left-0 right-0 top-full mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 overflow-hidden p-2 space-y-1"
                                                         >
                                                             {roles.map(r => (
                                                                 <button

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { jwtDecode } from 'jwt-decode';
+import { toast } from 'sonner';
 import api from '../services/api';
 
 const AuthContext = createContext(null);
@@ -70,6 +71,7 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         const handleAuthExpired = () => {
             setUser(null);
+            toast.error("Your session has expired. Please log in again.", { duration: 5000 });
         };
         window.addEventListener('auth:expired', handleAuthExpired);
         return () => window.removeEventListener('auth:expired', handleAuthExpired);

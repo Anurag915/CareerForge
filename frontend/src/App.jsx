@@ -374,14 +374,19 @@ function App() {
 
   if (!token) {
     return (
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
-        <Route path="/verify-email" element={<VerifyEmail />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="*" element={<LandingPage />} />
-      </Routes>
+      <div className={`${theme} flex h-screen bg-slate-50 dark:bg-[#0f1117] text-slate-900 dark:text-slate-100 overflow-hidden theme-transition font-sans`}>
+        <div className="flex-1 overflow-y-auto">
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="*" element={<LandingPage />} />
+          </Routes>
+        </div>
+        <Toaster richColors closeButton theme={theme} position="bottom-right" />
+      </div>
     );
   }
 

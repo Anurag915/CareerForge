@@ -9,16 +9,25 @@ import MultiResumeViewerModal from './MultiResumeViewerModal';
 
 const parseDateTime = (str) => {
     if (!str) return new Date();
-    if (!str.includes('Z') && !str.includes('+')) {
-        return new Date(str.replace(' ', 'T') + 'Z');
+    // Handles ISO strings and standard format (e.g. 2023-10-10 12:00:00)
+    let d = new Date(str);
+    if (!isNaN(d.getTime())) return d;
+    
+    // Fallback for missing 'T' and 'Z'
+    if (typeof str === 'string' && !str.includes('Z') && !str.includes('+') && str.includes(' ')) {
+        d = new Date(str.replace(' ', 'T') + 'Z');
+        if (!isNaN(d.getTime())) return d;
     }
     return new Date(str);
 };
 
 const formatDate = (dateString) => {
+    if (!dateString) return '-';
     const d = parseDateTime(dateString);
+    if (isNaN(d.getTime())) return '-';
     const datePart = d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-    return `${datePart}`;
+    const timePart = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    return `${datePart} at ${timePart}`;
 };
 
 const formatDuration = (start, end) => {
@@ -51,6 +60,8 @@ const StatusBadge = ({ status }) => {
 };
 
 const ExpandedDetails = ({ job }) => {
+    const [showFullJD, setShowFullJD] = useState(false);
+    
     // Determine the best resume and skills
     const resumes = job.resumes || [];
     const validResumes = resumes.filter(r => r && r.id);
@@ -101,10 +112,18 @@ const ExpandedDetails = ({ job }) => {
                             <Target className="w-4 h-4 text-accent-500" />
                             <h3>Job Description Details</h3>
                         </div>
-                        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-sm text-slate-600 dark:text-slate-400">
-                            <p className="line-clamp-3">
+                        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-sm text-slate-600 dark:text-slate-400 flex flex-col items-start">
+                            <p className={`whitespace-pre-wrap ${showFullJD ? '' : 'line-clamp-3'}`}>
                                 {job.job_description || "No job description provided."}
                             </p>
+                            {job.job_description && job.job_description.length > 150 && (
+                                <button 
+                                    onClick={() => setShowFullJD(!showFullJD)}
+                                    className="mt-2 text-xs font-semibold text-accent-600 dark:text-accent-400 hover:text-accent-700 dark:hover:text-accent-300 transition-colors"
+                                >
+                                    {showFullJD ? 'Show Less' : 'Read Full Description'}
+                                </button>
+                            )}
                         </div>
                         
                         {extractedSkills.length > 0 && (
