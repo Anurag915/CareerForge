@@ -15,7 +15,7 @@ const formatDate = (dateString) => {
     return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 };
 
-const MultiResumeViewerModal = ({ isOpen, onClose, resumes, comparisonName }) => {
+const MultiResumeViewerModal = ({ isOpen, onClose, resumes, comparisonName, initialIndex = 0 }) => {
     const defaultLayoutPluginInstance = defaultLayoutPlugin({
         sidebarTabs: () => [],
     });
@@ -24,8 +24,8 @@ const MultiResumeViewerModal = ({ isOpen, onClose, resumes, comparisonName }) =>
 
     // Reset selection when modal opens with new resumes
     useEffect(() => {
-        if (isOpen) setSelectedIndex(0);
-    }, [isOpen, resumes]);
+        if (isOpen) setSelectedIndex(initialIndex);
+    }, [isOpen, resumes, initialIndex]);
 
     if (!isOpen) return null;
 
@@ -134,7 +134,7 @@ const MultiResumeViewerModal = ({ isOpen, onClose, resumes, comparisonName }) =>
                             {activeResume?.pdf_url ? (
                                 <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js">
                                     <Viewer
-                                        fileUrl={`https://corsproxy.io/?${encodeURIComponent(activeResume.pdf_url)}`}
+                                        fileUrl={activeResume.pdf_url}
                                         plugins={[defaultLayoutPluginInstance]}
                                         renderError={(error) => (
                                             <div className="flex flex-col items-center justify-center h-full space-y-4 p-8 text-center bg-slate-50 dark:bg-slate-900">

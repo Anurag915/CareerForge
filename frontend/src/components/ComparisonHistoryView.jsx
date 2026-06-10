@@ -60,7 +60,7 @@ const StatusBadge = ({ status }) => {
 };
 
 const ExpandedDetails = ({ job }) => {
-    const [showFullJD, setShowFullJD] = useState(false);
+    const [showAllSkills, setShowAllSkills] = useState(false);
     
     // Determine the best resume and skills
     const resumes = job.resumes || [];
@@ -84,11 +84,11 @@ const ExpandedDetails = ({ job }) => {
                 if (candidateMetric) {
                     const matched = candidateMetric.matched_skills || [];
                     const missing = candidateMetric.missing_skills || [];
-                    extractedSkills = [...new Set([...matched, ...missing])].slice(0, 10);
+                    extractedSkills = [...new Set([...matched, ...missing])];
                 } else if (data.matched_skills || data.missing_skills) {
                     const matched = data.matched_skills || [];
                     const missing = data.missing_skills || [];
-                    extractedSkills = [...new Set([...matched, ...missing])].slice(0, 10);
+                    extractedSkills = [...new Set([...matched, ...missing])];
                 }
             } catch (e) {
                 console.error("Failed to parse skills from analysis data", e);
@@ -96,47 +96,55 @@ const ExpandedDetails = ({ job }) => {
         }
     }
 
+    const visibleSkills = showAllSkills ? extractedSkills : extractedSkills.slice(0, 4);
+    const hiddenSkillsCount = showAllSkills ? 0 : extractedSkills.length - 4;
+
     return (
         <motion.div 
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="w-full bg-slate-50/50 dark:bg-slate-900/30 overflow-hidden border-t border-slate-100 dark:border-slate-800"
+            className="w-full bg-slate-50/50 dark:bg-slate-900/30 overflow-hidden border-t border-slate-100 dark:border-slate-800 whitespace-normal"
         >
             <div className="p-6 md:p-8">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {/* Column 1: Job Description */}
+                    {/* Column 1: Key Skills Evaluated */}
                     <div className="space-y-4">
                         <div className="flex items-center gap-2 text-slate-800 dark:text-slate-200 font-semibold mb-2">
                             <Target className="w-4 h-4 text-accent-500" />
-                            <h3>Job Description Details</h3>
-                        </div>
-                        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-sm text-slate-600 dark:text-slate-400 flex flex-col items-start">
-                            <p className={`whitespace-pre-wrap ${showFullJD ? '' : 'line-clamp-3'}`}>
-                                {job.job_description || "No job description provided."}
-                            </p>
-                            {job.job_description && job.job_description.length > 150 && (
-                                <button 
-                                    onClick={() => setShowFullJD(!showFullJD)}
-                                    className="mt-2 text-xs font-semibold text-accent-600 dark:text-accent-400 hover:text-accent-700 dark:hover:text-accent-300 transition-colors"
-                                >
-                                    {showFullJD ? 'Show Less' : 'Read Full Description'}
-                                </button>
-                            )}
+                            <h3>Key Skills Evaluated</h3>
                         </div>
                         
-                        {extractedSkills.length > 0 && (
-                            <div>
-                                <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Key Skills Evaluated</h4>
+                        {extractedSkills.length > 0 ? (
+                            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
                                 <div className="flex flex-wrap gap-1.5">
-                                    {extractedSkills.map((skill, i) => (
-                                        <span key={i} className="px-2 py-1 bg-slate-200/50 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300 rounded text-xs">
+                                    {visibleSkills.map((skill, i) => (
+                                        <span key={i} className="px-2 py-1 bg-slate-200/50 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300 rounded text-xs whitespace-nowrap border border-slate-200 dark:border-slate-700/50">
                                             {skill}
                                         </span>
                                     ))}
-                                    {extractedSkills.length === 10 && <span className="px-2 py-1 text-slate-500 text-xs">...</span>}
+                                    {hiddenSkillsCount > 0 && (
+                                        <button 
+                                            onClick={() => setShowAllSkills(true)}
+                                            className="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded text-xs whitespace-nowrap font-medium transition-colors cursor-pointer"
+                                        >
+                                            +{hiddenSkillsCount} more
+                                        </button>
+                                    )}
+                                    {showAllSkills && extractedSkills.length > 4 && (
+                                        <button 
+                                            onClick={() => setShowAllSkills(false)}
+                                            className="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded text-xs whitespace-nowrap font-medium transition-colors cursor-pointer"
+                                        >
+                                            Show less
+                                        </button>
+                                    )}
                                 </div>
+                            </div>
+                        ) : (
+                            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-sm text-slate-500 italic">
+                                No skills evaluated.
                             </div>
                         )}
                     </div>
@@ -157,9 +165,13 @@ const ExpandedDetails = ({ job }) => {
                                         </span>
                                     </div>
                                     {resume.pdf_url && (
-                                        <a href={resume.pdf_url} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-400 hover:text-accent-500 transition-colors shrink-0">
+                                        <button 
+                                            onClick={() => job.onViewResume && job.onViewResume(job, resume)}
+                                            className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-400 hover:text-accent-500 transition-colors shrink-0"
+                                            title="Preview Resume"
+                                        >
                                             <Eye className="w-4 h-4" />
-                                        </a>
+                                        </button>
                                     )}
                                 </div>
                             )) : (
@@ -242,6 +254,12 @@ const ComparisonHistoryView = () => {
         }
         return job;
     });
+
+    const handleViewResume = (job, resume) => {
+        const resumes = job.resumes || [];
+        const index = resumes.findIndex(r => r.id === resume.id);
+        setViewingJobResumes({ ...job, initialIndex: index >= 0 ? index : 0 });
+    };
 
     const toggleRow = (id) => {
         const newSet = new Set(expandedRows);
@@ -364,7 +382,7 @@ const ComparisonHistoryView = () => {
                                                 {isExpanded && (
                                                     <tr>
                                                         <td colSpan="5" className="p-0 border-b border-slate-100 dark:border-slate-800">
-                                                            <ExpandedDetails job={job} />
+                                                            <ExpandedDetails job={{...job, onViewResume: handleViewResume}} />
                                                         </td>
                                                     </tr>
                                                 )}
@@ -383,6 +401,7 @@ const ComparisonHistoryView = () => {
                 onClose={() => setViewingJobResumes(null)}
                 resumes={viewingJobResumes?.resumes || []}
                 comparisonName={viewingJobResumes?.comparison_name}
+                initialIndex={viewingJobResumes?.initialIndex || 0}
             />
         </div>
     );
