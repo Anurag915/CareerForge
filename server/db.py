@@ -288,7 +288,7 @@ def get_history(user_id):
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     cursor.execute('''
-        SELECT a.id, a.resume_id, r.filename, a.job_description, a.ats_score, a.detailed_json, a.created_at
+        SELECT a.id, a.resume_id, r.filename, r.pdf_url, a.job_description, a.ats_score, a.detailed_json, a.created_at
         FROM analysis_results a
         JOIN resumes r ON a.resume_id = r.id
         WHERE a.user_id = %s
@@ -304,7 +304,7 @@ def get_latest_analysis_for_resume(resume_id, user_id):
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     cursor.execute('''
-        SELECT a.detailed_json, a.job_description, r.filename, a.ats_score, r.summary, r.skills, r.experience, r.education, r.projects, r.achievements, r.other_sections
+        SELECT a.detailed_json, a.job_description, r.filename, r.pdf_url, a.ats_score, r.summary, r.skills, r.experience, r.education, r.projects, r.achievements, r.other_sections
         FROM analysis_results a
         JOIN resumes r ON a.resume_id = r.id
         WHERE a.resume_id = %s AND a.user_id = %s
@@ -539,7 +539,7 @@ def get_comparison_detail(comparison_id, user_id):
     
     # Get all results for this job
     cursor.execute('''
-        SELECT cr.*, r.filename 
+        SELECT cr.*, r.filename, r.pdf_url 
         FROM comparison_results cr
         JOIN resumes r ON cr.resume_id = r.id
         WHERE cr.comparison_id = %s

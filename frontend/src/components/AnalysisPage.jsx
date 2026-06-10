@@ -53,10 +53,10 @@ const AnalysisPage = () => {
                 <h2 className="text-xl font-bold text-red-900 dark:text-red-100">Analysis Not Found</h2>
                 <p className="text-red-700 dark:text-red-300/80">{error}</p>
                 <button 
-                    onClick={() => navigate('/')}
+                    onClick={() => navigate(-1)}
                     className="px-6 py-2 bg-white dark:bg-slate-800 border border-red-200 dark:border-red-500/20 text-red-800 dark:text-red-400 rounded-lg font-semibold hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
                 >
-                    Go Back Home
+                    Go Back
                 </button>
             </div>
         );
@@ -80,11 +80,11 @@ const AnalysisPage = () => {
         <div className="space-y-6 theme-transition">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                 <button 
-                    onClick={() => navigate('/')}
+                    onClick={() => navigate(-1)}
                     className="flex items-center space-x-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors group"
                 >
                     <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                    <span className="text-sm font-semibold">Back to Dashboard</span>
+                    <span className="text-sm font-semibold">Back</span>
                 </button>
                 <div className="flex items-center gap-3">
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Analysis Context:</span>
@@ -111,7 +111,7 @@ const AnalysisPage = () => {
                 </div>
             </div>
 
-            <ResultCard results={data} onReset={() => navigate('/')} />
+            <ResultCard results={data} onReset={() => navigate(-1)} />
         </div>
     );
 };

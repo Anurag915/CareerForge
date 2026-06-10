@@ -642,6 +642,7 @@ def get_resume_analysis(resume_id):
     return jsonify({
         "resume_id": resume_id,
         "filename": res['filename'],
+        "pdf_url": res.get('pdf_url'),
         "job_description": res['job_description'],
         "sections": {
             "summary": res['summary'],
@@ -843,7 +844,20 @@ def get_job_status(job_id):
     # If the job isn't completed, remove any partial result data
     if job['status'] != 'completed':
         job['result'] = None
-        
+    else:
+        # Patch pdf_url for old analysis jobs where it was not stored in job result JSON
+        if job.get('result'):
+            try:
+                result_dict = json.loads(job['result']) if isinstance(job['result'], str) else job['result']
+                if 'pdf_url' not in result_dict or not result_dict['pdf_url']:
+                    if 'resume_id' in result_dict:
+                        resume_data = db.get_resume(result_dict['resume_id'], request.user['user_id'])
+                        if resume_data and resume_data.get('pdf_url'):
+                            result_dict['pdf_url'] = resume_data['pdf_url']
+                            job['result'] = json.dumps(result_dict) if isinstance(job['result'], str) else result_dict
+            except Exception as e:
+                print(f"Error patching pdf_url into job result: {e}")
+                
     return jsonify(job)
 
 @app.route('/api/jobs', methods=['GET'])

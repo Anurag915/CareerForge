@@ -109,6 +109,7 @@ function App() {
   const [activeTab, setActiveTab] = useState(() => {
     return localStorage.getItem("activeTab") || "dashboard";
   });
+  const [previousTab, setPreviousTab] = useState(null);
   
   const [preSelectedCompareIds, setPreSelectedCompareIds] = useState([]);
 
@@ -204,6 +205,7 @@ function App() {
     try {
       const res = await api.get(`/api/job/${jobId}`);
       if (res.data.status === "completed" && res.data.result) {
+        setPreviousTab(activeTab); // Store context
         // Handle different background job types
         if (res.data.type === "comparison") {
             const parsedResults = typeof res.data.result === 'string' ? JSON.parse(res.data.result) : res.data.result;
@@ -225,6 +227,10 @@ function App() {
     setResults(null);
     setComparisonResults(null);
     setError(null);
+    if (previousTab) {
+      setActiveTab(previousTab);
+      setPreviousTab(null);
+    }
   };
 
   const handleTabClick = (tabId) => {

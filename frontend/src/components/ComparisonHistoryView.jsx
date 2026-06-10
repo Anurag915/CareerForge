@@ -153,7 +153,7 @@ const ExpandedDetails = ({ job }) => {
                     <div className="space-y-4">
                         <div className="flex items-center gap-2 text-slate-800 dark:text-slate-200 font-semibold mb-2">
                             <FileSearch className="w-4 h-4 text-blue-500" />
-                            <h3>Selected Candidates ({validResumes.length})</h3>
+                            <h3>Selected Resumes ({validResumes.length})</h3>
                         </div>
                         <div className="flex flex-col gap-2">
                             {validResumes.length > 0 ? validResumes.map((resume, i) => (
@@ -161,7 +161,7 @@ const ExpandedDetails = ({ job }) => {
                                     <div className="flex items-center gap-2 overflow-hidden">
                                         <FileText className="w-4 h-4 text-slate-400 shrink-0" />
                                         <span className="text-sm text-slate-700 dark:text-slate-300 truncate">
-                                            {resume.filename || `Candidate ${i+1}`}
+                                            {resume.filename || `Resume ${i+1}`}
                                         </span>
                                     </div>
                                     {resume.pdf_url && (
@@ -175,7 +175,7 @@ const ExpandedDetails = ({ job }) => {
                                     )}
                                 </div>
                             )) : (
-                                <p className="text-sm text-slate-500 italic">No candidates selected or data unavailable.</p>
+                                <p className="text-sm text-slate-500 italic">No resumes selected or data unavailable.</p>
                             )}
                         </div>
                     </div>
@@ -189,7 +189,7 @@ const ExpandedDetails = ({ job }) => {
                         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 flex flex-col gap-4">
                             
                             <div>
-                                <span className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Top Candidate</span>
+                                <span className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Top Resume</span>
                                 {bestResume ? (
                                     <div className="flex items-center gap-2">
                                         <Award className="w-5 h-5 text-amber-500" />
@@ -284,9 +284,9 @@ const ComparisonHistoryView = () => {
                 <div>
                     <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                         <Columns className="w-5 h-5 text-accent-600 dark:text-accent-500" />
-                        Comparison History
+                        Resume Comparison History
                     </h2>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Review your past multi-candidate comparisons.</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Review and manage your previous resume comparison reports.</p>
                 </div>
                 <div className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-full text-xs font-bold border border-slate-200 dark:border-slate-700 uppercase tracking-wider">
                     {combinedHistory.length} Comparisons
@@ -299,7 +299,7 @@ const ComparisonHistoryView = () => {
                         <Columns className="w-6 h-6 text-slate-400" />
                     </div>
                     <h3 className="text-slate-900 dark:text-slate-100 font-semibold mb-1">No Comparison History Yet</h3>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm">Start by comparing multiple candidates to see it here.</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm">Start by comparing multiple resumes to see it here.</p>
                 </div>
             ) : (
                 <div className="bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-subtle overflow-hidden">
