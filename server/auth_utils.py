@@ -14,7 +14,9 @@ dotenv_path = os.path.join(base_dir, '.env')
 load_dotenv(dotenv_path)
 
 # Configuration
-JWT_SECRET = os.getenv("JWT_SECRET", "careerforge-super-secret-key-2026")
+JWT_SECRET = os.getenv("JWT_SECRET")
+if not JWT_SECRET:
+    raise ValueError("FATAL ERROR: JWT_SECRET environment variable is not set! You must provide a secure cryptographic key for production deployments.")
 JWT_ALGORITHM = "HS256"
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
@@ -33,8 +35,8 @@ def generate_access_token(user_data):
         'email': user_data['email'],
         'name': user_data.get('name'),
         'role': user_data.get('role', 'candidate'),
-        'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=15),
-        'iat': datetime.datetime.utcnow()
+        'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=15),
+        'iat': datetime.datetime.now(datetime.timezone.utc)
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 

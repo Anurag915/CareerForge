@@ -1,5 +1,6 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from psycopg2.pool import ThreadedConnectionPool
 import json
 import os
 from dotenv import load_dotenv
@@ -11,15 +12,43 @@ load_dotenv(dotenv_path)
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
+db_pool = None
+
+def init_pool():
+    global db_pool
+    if db_pool is None and DATABASE_URL:
+        # Minimum 1 connection, maximum 20 concurrent connections
+        db_pool = ThreadedConnectionPool(1, 20, DATABASE_URL)
+
+class PooledConnectionWrapper:
+    def __init__(self):
+        if db_pool is None:
+            init_pool()
+        self.conn = db_pool.getconn()
+
+    def cursor(self, *args, **kwargs):
+        return self.conn.cursor(*args, **kwargs)
+
+    def commit(self):
+        self.conn.commit()
+
+    def rollback(self):
+        self.conn.rollback()
+
+    def close(self):
+        # Return the actual connection back to the pool instead of terminating it
+        if db_pool and self.conn:
+            db_pool.putconn(self.conn)
+            self.conn = None
+
 def get_db_connection():
     """
-    Establishes connection to Postgres using the DATABASE_URL from environment.
+    Establishes connection to Postgres using a Threaded Connection Pool.
     """
     if not DATABASE_URL:
         raise ValueError("DATABASE_URL environment variable is not set in your .env file!")
     
-    conn = psycopg2.connect(DATABASE_URL)
-    return conn
+    return PooledConnectionWrapper()
 
 def init_db():
     conn = get_db_connection()
@@ -276,7 +305,7 @@ def save_analysis(resume_id, user_id, job_description, ats_score, detailed_json)
     import datetime
     conn = get_db_connection()
     cursor = conn.cursor()
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc)
     cursor.execute('''
         INSERT INTO analysis_results (resume_id, user_id, job_description, ats_score, detailed_json, created_at)
         VALUES (%s, %s, %s, %s, %s, %s)
@@ -378,7 +407,7 @@ def create_job(user_id, job_type, name=None):
     job_id = str(uuid.uuid4())
     conn = get_db_connection()
     cursor = conn.cursor()
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc)
     cursor.execute('''
         INSERT INTO jobs (id, user_id, type, name, status, created_at)
         VALUES (%s, %s, %s, %s, 'pending', %s)
@@ -391,7 +420,7 @@ def update_job_status(job_id, status, progress=0):
     import datetime
     conn = get_db_connection()
     cursor = conn.cursor()
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc)
     if status not in ['completed', 'failed', 'pending', 'cancelled']:
         cursor.execute('''
             UPDATE jobs SET status = %s, progress = %s, started_at = %s 
@@ -411,7 +440,7 @@ def update_job_result(job_id, result_dict):
     import datetime
     conn = get_db_connection()
     cursor = conn.cursor()
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc)
     cursor.execute('''
         UPDATE jobs SET status = 'completed', progress = 100, result = %s, completed_at = %s WHERE id = %s
     ''', (json.dumps(result_dict), now, job_id))
@@ -432,7 +461,7 @@ def create_comparison_record(comparison_id, user_id, job_description):
     import datetime
     conn = get_db_connection()
     cursor = conn.cursor()
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc)
     cursor.execute('''
         INSERT INTO comparison_jobs (id, user_id, status, job_description, created_at)
         VALUES (%s, %s, 'processing', %s, %s)
@@ -455,7 +484,7 @@ def save_comparison_results(comparison_id, results_payload):
     import datetime
     conn = get_db_connection()
     cursor = conn.cursor()
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc)
     
     # Update overarching job status
     cursor.execute('''
@@ -518,6 +547,12 @@ def get_comparison_history(user_id):
         if row['resumes'] and len(row['resumes']) == 1 and row['resumes'][0]['id'] is None:
             row['resumes'] = []
             
+        # Fix native datetime serialization for older Flask/json providers
+        if row.get('created_at'):
+            row['created_at'] = row['created_at'].isoformat()
+        if row.get('completed_at'):
+            row['completed_at'] = row['completed_at'].isoformat()
+            
     return [dict(row) for row in rows]
 
 def get_comparison_detail(comparison_id, user_id):
@@ -570,7 +605,7 @@ def create_notification(user_id, job_id, message):
     conn = get_db_connection()
     cursor = conn.cursor()
     notif_id = str(uuid.uuid4())
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc)
     cursor.execute('''
         INSERT INTO notifications (id, user_id, job_id, message, created_at) 
         VALUES (%s, %s, %s, %s, %s)
@@ -709,7 +744,7 @@ def verify_user_email(token_hash):
     import datetime
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc)
     
     cursor.execute('''
         SELECT id, email FROM users 
@@ -761,7 +796,7 @@ def reset_user_password(token_hash, new_hashed_password):
     import datetime
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc)
     
     cursor.execute('''
         SELECT id FROM users 
@@ -804,7 +839,7 @@ def validate_and_revoke_refresh_token(old_token_hash, new_token_hash, new_expire
     import datetime
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc)
     
     try:
         cursor.execute('''

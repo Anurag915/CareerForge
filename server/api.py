@@ -164,7 +164,7 @@ def signup():
     # Create Cryptographically Secure Verification Link
     raw_token = auth_utils.generate_refresh_token() # Reuses 128char hex generator for extra safety
     hashed_token = auth_utils.hash_token(raw_token)
-    expiry = datetime.datetime.utcnow() + datetime.timedelta(days=1) # Expires in 24 hours
+    expiry = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1) # Expires in 24 hours
 
     user_id = str(uuid.uuid4())[:8]
     success = db.save_user({
@@ -220,7 +220,7 @@ def resend_verification():
          
     raw_token = auth_utils.generate_refresh_token()
     hashed_token = auth_utils.hash_token(raw_token)
-    expiry = datetime.datetime.utcnow() + datetime.timedelta(days=1)
+    expiry = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
     
     db.update_verification_token(email, hashed_token, expiry)
     auth_utils.send_verification_email(email, raw_token)
@@ -258,7 +258,7 @@ def login():
     # 2. Generate Secure Long-lived Database Token
     raw_refresh_token = auth_utils.generate_refresh_token()
     hashed_refresh = auth_utils.hash_token(raw_refresh_token)
-    refresh_expiry = datetime.datetime.utcnow() + datetime.timedelta(days=7)
+    refresh_expiry = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=7)
     
     # 3. Commit to Secure Registry
     db.save_refresh_token(user['id'], hashed_refresh, refresh_expiry)
@@ -297,7 +297,7 @@ def refresh_session():
     # Compute next rotation variables
     raw_new_refresh = auth_utils.generate_refresh_token()
     hashed_new_refresh = auth_utils.hash_token(raw_new_refresh)
-    new_expiry = datetime.datetime.utcnow() + datetime.timedelta(days=7)
+    new_expiry = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=7)
     
     # Atomic Database rotation logic protects against double usage replays
     user_id = db.validate_and_revoke_refresh_token(hashed_old_refresh, hashed_new_refresh, new_expiry)
@@ -371,7 +371,7 @@ def forgot_password():
         
     raw_reset = auth_utils.generate_refresh_token()
     hashed_reset = auth_utils.hash_token(raw_reset)
-    expiry = datetime.datetime.utcnow() + datetime.timedelta(hours=1) # Hard limit to 1 hour
+    expiry = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1) # Hard limit to 1 hour
     
     db.set_password_reset_token(email, hashed_reset, expiry)
     auth_utils.send_reset_password_email(email, raw_reset)

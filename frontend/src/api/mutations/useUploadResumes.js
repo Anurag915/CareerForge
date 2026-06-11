@@ -16,6 +16,7 @@ export const useUploadResumes = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['resumes'] });
     },
   });
 };
