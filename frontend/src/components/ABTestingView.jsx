@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { io } from 'socket.io-client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
@@ -13,7 +13,7 @@ const ABTestingView = () => {
     const { data: resumes = [] } = useQuery({
         queryKey: ['resumes'],
         queryFn: async () => {
-            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/resumes`);
+            const res = await api.get('/resumes');
             return res.data;
         }
     });
@@ -21,7 +21,7 @@ const ABTestingView = () => {
     const { data: allJobs = [] } = useQuery({
         queryKey: ['jobs'],
         queryFn: async () => {
-            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/jobs`);
+            const res = await api.get('/api/jobs');
             return res.data;
         }
     });
@@ -95,7 +95,7 @@ const ABTestingView = () => {
                 // Refetch single job after 500ms purely to guarantee backend storage write consistency
                 setTimeout(async () => {
                     try {
-                        const finalData = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/job/${jobId}`);
+                        const finalData = await api.get(`/api/job/${jobId}`);
                         setOptJobs(prev => prev.map(j => j.id === jobId ? finalData.data : j));
                     } catch (e) {}
                 }, 500);
@@ -120,7 +120,7 @@ const ABTestingView = () => {
         formData.append('persist', 'false'); 
 
         try {
-            const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/analyze-advanced`, formData);
+            const res = await api.post('/analyze-advanced', formData);
             const newTemp = {
                 id: res.data.resume_id,
                 filename: file.filename || file.name,
@@ -142,7 +142,7 @@ const ABTestingView = () => {
         setLoading(true);
         setError(null);
         try {
-            const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/compare-my-resumes`, {
+            const res = await api.post('/compare-my-resumes', {
                 resume_ids: validSelectedIds, // Pass strictly valid IDs only
                 job_description: jobDescription
             });
@@ -177,7 +177,7 @@ const ABTestingView = () => {
     const handleCancelOptimization = async (jobId) => {
         if (!window.confirm("Terminate optimization run? All processed results will be lost.")) return;
         try {
-            await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/job/${jobId}/cancel`);
+            await api.post(`/api/job/${jobId}/cancel`);
             // Fast Optimistic update UI locally to reflect cancel without waiting for socket bounce
             setOptJobs(prev => prev.map(j => j.id === jobId ? {...j, status: 'cancelled'} : j));
         } catch (e) {
@@ -201,7 +201,7 @@ const ABTestingView = () => {
 
         // Otherwise, lazy-load the high-bandwidth payload from backend
         try {
-            const response = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/api/job/${jobId}`);
+            const response = await api.get(`/api/job/${jobId}`);
             setOptJobs(prev => prev.map(j => 
                 j.id === jobId ? { ...j, result: response.data.result } : j
             ));

@@ -1,29 +1,47 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Columns, Check, AlertCircle, Sparkles, UserPlus, Trash2, BrainCircuit } from 'lucide-react';
+import PaginationControls from './PaginationControls';
+import { useQuery } from '@tanstack/react-query';
 
-const ComparisonDashboard = () => {
-    const [resumes, setResumes] = useState([]);
-    const [selectedIds, setSelectedIds] = useState([]);
-    const [comparisonData, setComparisonData] = useState(null);
+const ComparisonDashboard = ({ preSelectedIds = [], initialData = null }) => {
+    // Shared query cache with MyResumesView
+    const { data: resumes = [] } = useQuery({
+        queryKey: ['resumes'],
+        queryFn: async () => {
+            const res = await api.get('/resumes');
+            return res.data;
+        },
+        staleTime: 5 * 60 * 1000, // 5 minutes
+        gcTime: 10 * 60 * 1000,   // 10 minutes cache
+        refetchOnWindowFocus: false,
+        refetchOnMount: false,
+        refetchOnReconnect: false
+    });
+
+    const [selectedIds, setSelectedIds] = useState(preSelectedIds);
+    const [comparisonData, setComparisonData] = useState(initialData);
     const [jobDescription, setJobDescription] = useState('');
     const [topN, setTopN] = useState(0); // 0 means all
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [successMsg, setSuccessMsg] = useState(null);
     const [tempResumes, setTempResumes] = useState([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 12;
 
     useEffect(() => {
-        const fetchResumes = async () => {
-            try {
-                const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/resumes`);
-                setResumes(res.data);
-            } catch (err) {
-                console.error("Failed to fetch resumes:", err);
-            }
-        };
-        fetchResumes();
-    }, []);
+        if (preSelectedIds && preSelectedIds.length > 0) {
+            setSelectedIds(preSelectedIds);
+        }
+    }, [preSelectedIds]);
+
+    useEffect(() => {
+        if (initialData) {
+            setComparisonData(initialData);
+        }
+    }, [initialData]);
 
     const toggleSelection = (id) => {
         setSelectedIds(prev => 
@@ -43,9 +61,9 @@ const ComparisonDashboard = () => {
             for (const file of files) {
                 const formData = new FormData();
                 formData.append('resume', file);
-                formData.append('persist', 'false');
+                formData.append('persist', 'true');
                 
-                const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/analyze-advanced`, formData);
+                const res = await api.post('/analyze-advanced', formData);
                 newTemps.push({
                     id: res.data.resume_id,
                     filename: file.name,
@@ -67,13 +85,20 @@ const ComparisonDashboard = () => {
         if (selectedIds.length < 2 || !jobDescription.trim()) return;
         setLoading(true);
         setError(null);
+        setSuccessMsg(null);
         try {
-            const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'}/compare`, { 
+            const res = await api.post('/compare', { 
                 resume_ids: selectedIds,
                 job_description: jobDescription,
                 top_n: topN > 0 ? parseInt(topN) : null
             });
-            setComparisonData(res.data);
+            if (res.data.jobId) {
+                setSuccessMsg("Your comparison has been submitted successfully. You can track its progress in Resume Comparison History.");
+                // Optionally clear selections
+                // setSelectedIds([]);
+            } else {
+                setComparisonData(res.data);
+            }
         } catch (err) {
             setError(err.response?.data?.error || "Comparison failed");
         } finally {
@@ -83,52 +108,84 @@ const ComparisonDashboard = () => {
 
     const allResumes = [...resumes, ...tempResumes];
 
+    const totalPages = Math.ceil(allResumes.length / itemsPerPage);
+    const paginatedResumes = allResumes.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
     return (
-        <div className="w-full space-y-8 theme-transition">
+        <div className="w-full space-y-4 theme-transition">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
                     <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                         <Columns className="w-6 h-6 text-accent-600 dark:text-accent-500" />
-                        Compare Candidates
+                        Compare Resumes
                     </h2>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Select multiple resumes and provide a JD to compare candidates side-by-side.</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Compare multiple resumes against a job description to identify the strongest match.</p>
                 </div>
-                <div className="flex items-center space-x-3">
-                    <label className="cursor-pointer bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-900 transition-all shadow-subtle flex items-center space-x-2">
-                        <input type="file" className="hidden" multiple onChange={handleBatchUpload} />
-                        <UserPlus className="w-4 h-4" />
-                        <span>Quick Batch Upload</span>
-                    </label>
-                    <button
-                        onClick={handleCompare}
-                        disabled={selectedIds.length < 2 || !jobDescription.trim() || loading}
-                        className="flex items-center space-x-2 bg-slate-900 dark:bg-accent-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm disabled:opacity-30 shadow-lg hover:shadow-xl transition-all"
-                    >
-                        {loading ? (
-                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                        ) : (
-                            <BrainCircuit className="w-4 h-4" />
-                        )}
-                        <span>Run AI Comparison</span>
-                    </button>
+                <div className="flex flex-col items-end">
+                    <div className="flex items-center space-x-3">
+                        <label className="cursor-pointer bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-900 transition-all shadow-subtle flex items-center space-x-2">
+                            <input type="file" className="hidden" multiple onChange={handleBatchUpload} />
+                            <UserPlus className="w-4 h-4" />
+                            <span>Quick Batch Upload</span>
+                        </label>
+                        <button
+                            onClick={handleCompare}
+                            disabled={selectedIds.length < 2 || !jobDescription.trim() || loading}
+                            className="flex items-center space-x-2 bg-slate-900 dark:bg-accent-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg transition-all hover:bg-slate-800 dark:hover:bg-accent-500 hover:-translate-y-0.5 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-slate-900 dark:disabled:hover:bg-accent-600 disabled:hover:translate-y-0"
+                        >
+                            {loading ? (
+                                <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                    <span>Generating Resume Comparison Report...</span>
+                                </div>
+                            ) : (
+                                <>
+                                    <BrainCircuit className="w-4 h-4" />
+                                    <span>Start Comparison</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+                    {selectedIds.length < 2 && (
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-2 text-right">
+                            Select two or more resumes and a target job description to discover which resume performs best and why.
+                        </p>
+                    )}
                 </div>
             </div>
 
+            {error && (
+                <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-xl border border-red-200 dark:border-red-800/30 flex items-center gap-3">
+                    <AlertCircle className="w-5 h-5 shrink-0" />
+                    <p className="text-sm font-medium">{error}</p>
+                </div>
+            )}
+            
+            {successMsg && (
+                <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-xl border border-emerald-200 dark:border-emerald-800/30 flex items-center gap-3">
+                    <Check className="w-5 h-5 shrink-0" />
+                    <p className="text-sm font-medium">{successMsg}</p>
+                </div>
+            )}
+
             {/* JD & Top N Selection */}
-            <div className="grid md:grid-cols-3 gap-6">
-                <div className="md:col-span-2 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-6 rounded-2xl shadow-subtle">
+            <div className="grid md:grid-cols-3 gap-4">
+                <div className="md:col-span-2 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-4 rounded-2xl shadow-subtle">
                     <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Target Job Description (Required)</label>
                     <textarea 
-                        className="w-full h-32 p-4 bg-slate-50/30 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:ring-4 focus:ring-accent-500/5 transition-all outline-none"
+                        className="w-full h-24 p-3 bg-slate-50/30 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:ring-4 focus:ring-accent-500/5 transition-all outline-none"
                         placeholder="Paste the job description..."
                         value={jobDescription}
                         onChange={(e) => setJobDescription(e.target.value)}
                     />
                 </div>
-                <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-6 rounded-2xl shadow-subtle flex flex-col justify-between">
+                <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-4 rounded-2xl shadow-subtle flex flex-col justify-between">
                     <div>
                         <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Shortlist Filter</label>
-                        <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-4 leading-relaxed">Limit results to the top <strong>N</strong> candidates. Leave at 0 to see all.</p>
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-4 leading-relaxed">Limit results to the top <strong>N</strong> resumes. Leave at 0 to see all.</p>
                         <div className="relative">
                             <input 
                                 type="number" 
@@ -137,7 +194,7 @@ const ComparisonDashboard = () => {
                                 value={topN}
                                 onChange={(e) => setTopN(e.target.value)}
                             />
-                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-300 dark:text-slate-600 pointer-events-none">Candidates</div>
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-300 dark:text-slate-600 pointer-events-none">Resumes</div>
                         </div>
                     </div>
                     <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
@@ -148,31 +205,50 @@ const ComparisonDashboard = () => {
             </div>
 
             {/* Selection Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {allResumes.map(r => (
-                    <div
-                        key={r.id}
-                        onClick={() => toggleSelection(r.id)}
-                        className={`p-4 rounded-2xl border cursor-pointer transition-all relative ${
-                            selectedIds.includes(r.id) 
-                            ? 'bg-slate-100 dark:bg-accent-500/10 border-slate-900 dark:border-accent-500 ring-2 ring-slate-900/10 dark:ring-accent-500/20' 
-                            : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600'
-                        }`}
-                    >
-                        {selectedIds.includes(r.id) && (
-                            <div className="absolute top-2 right-2 bg-slate-900 dark:bg-accent-600 text-white p-1 rounded-full">
-                                <Check className="w-3 h-3" />
+            {allResumes.length === 0 ? (
+                <div className="bg-slate-50 dark:bg-slate-800/20 border border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-12 text-center flex flex-col items-center justify-center">
+                    <FileIcon className="w-12 h-12 text-slate-300 dark:text-slate-600 mb-4" />
+                    <p className="text-slate-500 dark:text-slate-400 font-medium">Upload and compare multiple resumes to identify the best version for a specific role.</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {paginatedResumes.map(r => (
+                        <div
+                            key={r.id}
+                            onClick={() => toggleSelection(r.id)}
+                            className={`p-4 rounded-2xl border cursor-pointer transition-all relative ${
+                                selectedIds.includes(r.id) 
+                                ? 'bg-slate-100 dark:bg-accent-500/10 border-slate-900 dark:border-accent-500 ring-2 ring-slate-900/10 dark:ring-accent-500/20' 
+                                : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600'
+                            }`}
+                        >
+                            {selectedIds.includes(r.id) && (
+                                <div className="absolute top-2 right-2 bg-slate-900 dark:bg-accent-600 text-white p-1 rounded-full">
+                                    <Check className="w-3 h-3" />
+                                </div>
+                            )}
+                            <FileIcon className={`w-8 h-8 mb-3 ${r.isTemp ? 'text-amber-400' : 'text-slate-200 dark:text-slate-700'}`} />
+                            <div className="flex items-center space-x-1 mb-0.5 min-w-0">
+                               <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{r.filename}</h4>
+                               {r.isTemp && <span className="text-[7px] bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 px-1 rounded font-black uppercase">Temp</span>}
                             </div>
-                        )}
-                        <FileIcon className={`w-8 h-8 mb-3 ${r.isTemp ? 'text-amber-400' : 'text-slate-200 dark:text-slate-700'}`} />
-                        <div className="flex items-center space-x-1 mb-0.5 min-w-0">
-                           <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{r.filename}</h4>
-                           {r.isTemp && <span className="text-[7px] bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 px-1 rounded font-black uppercase">Temp</span>}
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono uppercase">ID: {r.id}</p>
                         </div>
-                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono uppercase">ID: {r.id}</p>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            )}
+
+            {allResumes.length > 0 && (
+                <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-4 rounded-2xl shadow-subtle">
+                    <PaginationControls
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                        totalItems={allResumes.length}
+                        itemsPerPage={itemsPerPage}
+                    />
+                </div>
+            )}
 
             {/* Results Table */}
             <AnimatePresence>

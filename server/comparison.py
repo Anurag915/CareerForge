@@ -1,11 +1,15 @@
 import utils
 import llm
 
-def compare_resumes(resume_list, job_description, top_n=None):
+def compare_resumes(resume_list, job_description, top_n=None, update_status=None):
     """
     resume_list: list of dicts from db.get_resume()
     """
+    import time
     comparison_results = []
+    
+    if update_status: update_status('✓ Skills Extracted', 30)
+    time.sleep(0.5)
     
     # 1. Rule-based Extraction (Deterministic)
     for resume in resume_list:
@@ -24,8 +28,20 @@ def compare_resumes(resume_list, job_description, top_n=None):
         }
         comparison_results.append(metrics)
         
+    if update_status: update_status('✓ Experience Compared', 45)
+    time.sleep(0.5)
+    
+    if update_status: update_status('✓ Projects Compared', 60)
+    time.sleep(0.5)
+    
+    if update_status: update_status('✓ Keyword Analysis', 75)
+    time.sleep(0.5)
+        
     # Phase 4: Deterministic Ranking
     comparison_results.sort(key=lambda x: x['ats_score'], reverse=True)
+    
+    if update_status: update_status('✓ ATS Ranking Generated', 85)
+    time.sleep(0.5)
 
     # Phase 5: Top N Selection
     if top_n and isinstance(top_n, int) and top_n > 0:
@@ -57,7 +73,7 @@ def compare_resumes(resume_list, job_description, top_n=None):
     {context}
     """
     
-    llm_response = llm.query_ollama(prompt, format_json=True)
+    llm_response = llm.query_gemini(prompt, format_json=True)
     llm_data = utils.clean_output(llm_response)
     
     return {
