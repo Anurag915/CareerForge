@@ -3,7 +3,9 @@ import hashlib
 import secrets
 import os
 import jwt
-import resend
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 
 # Enforce paths
@@ -14,12 +16,13 @@ load_dotenv(dotenv_path)
 # Configuration
 JWT_SECRET = os.getenv("JWT_SECRET", "careerforge-super-secret-key-2026")
 JWT_ALGORITHM = "HS256"
-RESEND_API_KEY = os.getenv("RESEND_API_KEY")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
-# Register Resend
-if RESEND_API_KEY:
-    resend.api_key = RESEND_API_KEY
+# SMTP Configuration
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", 465)) # 465 for SSL, 587 for TLS
+SMTP_USER = os.getenv("SMTP_USER")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 
 def generate_access_token(user_data):
     """
@@ -48,12 +51,12 @@ def hash_token(token):
     """
     return hashlib.sha256(token.encode('utf-8')).hexdigest()
 
-def send_verification_email(email, raw_token):
+def send_verification_email(user_email, raw_token):
     """
-    Sends a branded email verification link using Resend API.
+    Sends a branded email verification link using Gmail SMTP.
     """
-    if not RESEND_API_KEY:
-        print(f"⚠️ SKIPPED EMAIL DISPATCH: RESEND_API_KEY not found. Token: {raw_token}")
+    if not SMTP_USER or not SMTP_PASSWORD:
+        print(f"⚠️ SKIPPED EMAIL DISPATCH: SMTP credentials not configured. Token: {raw_token}")
         return False
 
     verify_link = f"{FRONTEND_URL}/verify-email?token={raw_token}"
@@ -76,25 +79,35 @@ def send_verification_email(email, raw_token):
     </div>
     """
     
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = "🔗 Confirm your CareerForge Email"
+    msg['From'] = f"CareerForge <{SMTP_USER}>"
+    msg['To'] = user_email
+
+    msg.attach(MIMEText(html_content, 'html'))
+    
     try:
-        params = {
-            "from": "CareerForge <onboarding@resend.dev>",
-            "to": [email],
-            "subject": "🔗 Confirm your CareerForge Email",
-            "html": html_content,
-        }
-        resend.Emails.send(params)
+        # Use SMTP_SSL for port 465
+        if SMTP_PORT == 465:
+            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as server:
+                server.login(SMTP_USER, SMTP_PASSWORD)
+                server.send_message(msg)
+        else:
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+                server.starttls()
+                server.login(SMTP_USER, SMTP_PASSWORD)
+                server.send_message(msg)
         return True
     except Exception as e:
-        print(f"❌ RESEND FAIL: {e}")
+        print(f"❌ SMTP FAIL: {e}")
         return False
 
-def send_reset_password_email(email, raw_token):
+def send_reset_password_email(user_email, raw_token):
     """
-    Sends a password recovery token using Resend API.
+    Sends a password recovery token using Gmail SMTP.
     """
-    if not RESEND_API_KEY:
-        print(f"⚠️ SKIPPED EMAIL DISPATCH: RESEND_API_KEY not found. Reset Token: {raw_token}")
+    if not SMTP_USER or not SMTP_PASSWORD:
+        print(f"⚠️ SKIPPED EMAIL DISPATCH: SMTP credentials not configured. Reset Token: {raw_token}")
         return False
 
     reset_link = f"{FRONTEND_URL}/reset-password?token={raw_token}"
@@ -120,15 +133,24 @@ def send_reset_password_email(email, raw_token):
     </div>
     """
     
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = "🔑 CareerForge Password Recovery Link"
+    msg['From'] = f"CareerForge <{SMTP_USER}>"
+    msg['To'] = user_email
+
+    msg.attach(MIMEText(html_content, 'html'))
+    
     try:
-        params = {
-            "from": "CareerForge <onboarding@resend.dev>",
-            "to": [email],
-            "subject": "🔑 CareerForge Password Recovery Link",
-            "html": html_content,
-        }
-        resend.Emails.send(params)
+        if SMTP_PORT == 465:
+            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as server:
+                server.login(SMTP_USER, SMTP_PASSWORD)
+                server.send_message(msg)
+        else:
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+                server.starttls()
+                server.login(SMTP_USER, SMTP_PASSWORD)
+                server.send_message(msg)
         return True
     except Exception as e:
-        print(f"❌ RESEND FAIL: {e}")
+        print(f"❌ SMTP FAIL: {e}")
         return False

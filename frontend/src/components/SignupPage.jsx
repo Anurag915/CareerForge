@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserPlus, Mail, Lock, User, Briefcase, Loader2, AlertCircle, ArrowLeft, ChevronDown, CheckCircle2, Inbox, ShieldCheck } from 'lucide-react';
+import { UserPlus, Mail, Lock, User, Briefcase, Loader2, AlertCircle, ArrowLeft, ChevronDown, CheckCircle2, Inbox, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 
 import { useAuth } from '../context/AuthContext';
 
@@ -23,6 +23,7 @@ const SignupPage = () => {
         password: '',
         role: 'candidate'
     });
+    const [showPassword, setShowPassword] = useState(false);
     const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -221,13 +222,20 @@ const SignupPage = () => {
                                         <div className="relative">
                                             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
                                             <input 
-                                                type="password"
+                                                type={showPassword ? "text" : "password"}
                                                 required
-                                                className="w-full pl-11 pr-4 py-3.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 dark:focus:border-blue-400 transition-all text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 font-medium shadow-sm"
+                                                className="w-full pl-11 pr-12 py-3.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 dark:focus:border-blue-400 transition-all text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 font-medium shadow-sm"
                                                 placeholder="••••••••"
                                                 value={formData.password}
                                                 onChange={(e) => setFormData({...formData, password: e.target.value})}
                                             />
+                                            <button 
+                                                type="button" 
+                                                onClick={() => setShowPassword(!showPassword)} 
+                                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors"
+                                            >
+                                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                            </button>
                                         </div>
                                         {/* Password Requirements */}
                                         <div className="flex flex-col gap-1.5 pt-2 px-1">

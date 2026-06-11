@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, CheckCircle2, ArrowLeft, Loader2, AlertCircle, Sparkles } from 'lucide-react';
+import { Lock, CheckCircle2, ArrowLeft, Loader2, AlertCircle, Sparkles, Eye, EyeOff } from 'lucide-react';
 import api from '../services/api';
 
 const ResetPassword = () => {
@@ -9,6 +9,8 @@ const ResetPassword = () => {
     const navigate = useNavigate();
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
@@ -90,13 +92,20 @@ const ResetPassword = () => {
                                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                         <input 
                                             id="p1"
-                                            type="password" 
+                                            type={showPassword ? "text" : "password"}
                                             required
                                             placeholder="Min 6 characters"
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
-                                            className="w-full pl-12 pr-4 py-3 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-slate-900 dark:text-white text-sm focus:ring-4 focus:ring-accent-500/10 focus:border-accent-500 transition-all"
+                                            className="w-full pl-12 pr-12 py-3 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-slate-900 dark:text-white text-sm focus:ring-4 focus:ring-accent-500/10 focus:border-accent-500 transition-all"
                                         />
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setShowPassword(!showPassword)} 
+                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                                        >
+                                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        </button>
                                     </div>
                                 </div>
 
@@ -106,13 +115,20 @@ const ResetPassword = () => {
                                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                         <input 
                                             id="p2"
-                                            type="password" 
+                                            type={showConfirmPassword ? "text" : "password"}
                                             required
                                             placeholder="Re-type password"
                                             value={confirmPassword}
                                             onChange={(e) => setConfirmPassword(e.target.value)}
-                                            className="w-full pl-12 pr-4 py-3 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-slate-900 dark:text-white text-sm focus:ring-4 focus:ring-accent-500/10 focus:border-accent-500 transition-all"
+                                            className="w-full pl-12 pr-12 py-3 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-slate-900 dark:text-white text-sm focus:ring-4 focus:ring-accent-500/10 focus:border-accent-500 transition-all"
                                         />
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setShowConfirmPassword(!showConfirmPassword)} 
+                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                                        >
+                                            {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        </button>
                                     </div>
                                 </div>
 

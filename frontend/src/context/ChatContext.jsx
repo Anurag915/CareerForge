@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
+import { useAuth } from './AuthContext';
 
 const ChatContext = createContext(null);
 
@@ -9,6 +10,7 @@ export const ChatProvider = ({ children }) => {
     const [messages, setMessages] = useState([]);
     const [loadingSessionId, setLoadingSessionId] = useState(null);
     const [fetchingHistory, setFetchingHistory] = useState(false);
+    const { isAuthenticated } = useAuth();
 
     // 1. Load sidebar sessions list on initialization
     const fetchSessions = useCallback(async () => {
@@ -150,11 +152,13 @@ export const ChatProvider = ({ children }) => {
 
     // Load initial context list on initial app mount once
     useEffect(() => {
-        fetchSessions();
-        if (activeSessionId) {
-            fetchHistory(activeSessionId);
+        if (isAuthenticated) {
+            fetchSessions();
+            if (activeSessionId) {
+                fetchHistory(activeSessionId);
+            }
         }
-    }, []); // Runs once per hard boot
+    }, [isAuthenticated]); // Re-run when authentication state changes
 
     return (
         <ChatContext.Provider value={{

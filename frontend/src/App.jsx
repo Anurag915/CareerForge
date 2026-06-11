@@ -385,7 +385,9 @@ function App() {
     }
   };
 
-  if (!token) {
+  const isPublicActionRoute = ['/verify-email', '/reset-password', '/forgot-password'].includes(location.pathname);
+
+  if (!token || isPublicActionRoute) {
     return (
       <div className={`${theme} flex h-screen bg-slate-50 dark:bg-[#0f1117] text-slate-900 dark:text-slate-100 overflow-hidden theme-transition font-sans`}>
         <div className="flex-1 overflow-y-auto">
@@ -395,7 +397,7 @@ function App() {
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="*" element={<LandingPage />} />
+            <Route path="*" element={!token ? <LandingPage /> : <Navigate to="/" replace />} />
           </Routes>
         </div>
         <Toaster richColors closeButton theme={theme} position="bottom-right" />
@@ -470,9 +472,9 @@ function App() {
           <Routes>
             <Route path="/login" element={<Navigate to="/" replace />} />
             <Route path="/signup" element={<Navigate to="/" replace />} />
-            <Route path="/verify-email" element={<Navigate to="/" replace />} />
-            <Route path="/forgot-password" element={<Navigate to="/" replace />} />
-            <Route path="/reset-password" element={<Navigate to="/" replace />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/analysis/:id" element={<AnalysisPage />} />
             <Route path="/comparisons/:id" element={<ComparisonDetailView />} />
             <Route path="/" element={renderDashboard()} />
