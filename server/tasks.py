@@ -9,6 +9,8 @@ import json
 from utils import clean_output
 import comparison
 
+import socketio
+
 # Localized SSL/TLS Fix for worker Flask-SocketIO emitter (redis-py requires lowercase 'none')
 RAW_REDIS = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 SOCKET_REDIS_URL = RAW_REDIS
@@ -16,8 +18,9 @@ if RAW_REDIS.startswith('rediss://') and 'ssl_cert_reqs' not in RAW_REDIS:
     separator = '&' if '?' in RAW_REDIS else '?'
     SOCKET_REDIS_URL = f"{RAW_REDIS}{separator}ssl_cert_reqs=none"
 
-# Phase 4: External Emitter for Celery Workers
-socket_emitter = SocketIO(message_queue=SOCKET_REDIS_URL, async_mode='gevent')
+# Phase 4: External Emitter for Celery Workers (Write-Only to prevent blocking background listeners!)
+# IMPORTANT: channel MUST be 'flask-socketio' to match the web server's listener
+socket_emitter = socketio.RedisManager(SOCKET_REDIS_URL, channel='flask-socketio', write_only=True)
 
 @celery_app.task(name='tasks.analyze_resume_job')
 def analyze_resume_job(job_id, data, user_id):
@@ -27,11 +30,11 @@ def analyze_resume_job(job_id, data, user_id):
     """
     try:
         db.update_job_status(job_id, 'Reading your resume', 10)
-        socket_emitter.emit(f'job:{job_id}', {'status': 'Reading your resume', 'progress': 10, 'message': 'Reading your resume'})
+        socket_emitter.emit(f'job:{job_id}', {'status': 'Reading your resume', 'progress': 10, 'message': 'Reading your resume'}, namespace='/')
         
         # 1. Parsing & Indexing
         db.update_job_status(job_id, 'Extracting key skills', 30)
-        socket_emitter.emit(f'job:{job_id}', {'status': 'Extracting key skills', 'progress': 30, 'message': 'Extracting key skills'})
+        socket_emitter.emit(f'job:{job_id}', {'status': 'Extracting key skills', 'progress': 30, 'message': 'Extracting key skills'}, namespace='/')
         
         resume_id = data.get('resume_id')
         text = data.get('resume_text')
@@ -48,7 +51,7 @@ def analyze_resume_job(job_id, data, user_id):
             }, user_id)
         
         db.update_job_status(job_id, 'Matching with job description', 60)
-        socket_emitter.emit(f'job:{job_id}', {'status': 'Matching with job description', 'progress': 60, 'message': 'Matching with job description'})
+        socket_emitter.emit(f'job:{job_id}', {'status': 'Matching with job description', 'progress': 60, 'message': 'Matching with job description'}, namespace='/')
         rag.create_index(resume_id, text)
         
         # Safe Early-Exit: Check if user cancelled during initial indexing
@@ -59,7 +62,7 @@ def analyze_resume_job(job_id, data, user_id):
         
         # 2. LLM Analysis
         db.update_job_status(job_id, 'Analyzing experience', 80)
-        socket_emitter.emit(f'job:{job_id}', {'status': 'Analyzing experience', 'progress': 80, 'message': 'Analyzing experience'})
+        socket_emitter.emit(f'job:{job_id}', {'status': 'Analyzing experience', 'progress': 80, 'message': 'Analyzing experience'}, namespace='/')
         raw_analysis = llm.analyze_resume_ats(sections, data.get('job_description'))
         analysis_data = clean_output(raw_analysis)
         
@@ -85,9 +88,9 @@ def analyze_resume_job(job_id, data, user_id):
         # Phase 8: Create Notification
         notif_msg = f"Analysis for {data.get('filename')} is complete."
         db.create_notification(user_id, job_id, notif_msg)
-        socket_emitter.emit('notification:new', {'user_id': user_id, 'message': notif_msg}, room=f"user_{user_id}")
+        socket_emitter.emit('notification:new', {'user_id': user_id, 'message': notif_msg}, room=f"user_{user_id}", namespace='/')
         
-        socket_emitter.emit(f'job:{job_id}', {'status': 'completed', 'progress': 100, 'result': result, 'message': 'Finalizing results'})
+        socket_emitter.emit(f'job:{job_id}', {'status': 'completed', 'progress': 100, 'result': result, 'message': 'Finalizing results'}, namespace='/')
         return {"status": "success", "job_id": job_id}
         
     except Exception as e:
@@ -95,9 +98,9 @@ def analyze_resume_job(job_id, data, user_id):
         friendly_error = f"We encountered an issue analyzing {data.get('filename')}. Please try uploading again."
         db.update_job_status(job_id, 'failed', 0)
         db.create_notification(user_id, job_id, friendly_error)
-        socket_emitter.emit('notification:new', {'user_id': user_id, 'message': friendly_error}, room=f"user_{user_id}")
+        socket_emitter.emit('notification:new', {'user_id': user_id, 'message': friendly_error}, room=f"user_{user_id}", namespace='/')
         
-        socket_emitter.emit(f'job:{job_id}', {'status': 'failed', 'progress': 0, 'error': friendly_error})
+        socket_emitter.emit(f'job:{job_id}', {'status': 'failed', 'progress': 0, 'error': friendly_error}, namespace='/')
         return {"status": "error", "error": friendly_error}
 
 @celery_app.task(name='tasks.optimize_resumes_job')
@@ -108,7 +111,7 @@ def optimize_resumes_job(job_id, data, user_id):
     """
     try:
         db.update_job_status(job_id, 'Validating documents', 10)
-        socket_emitter.emit(f'job:{job_id}', {'status': 'Validating documents', 'progress': 10})
+        socket_emitter.emit(f'job:{job_id}', {'status': 'Validating documents', 'progress': 10}, namespace='/')
         
         resume_ids = data.get('resume_ids', [])
         job_description = data.get('job_description', '')
@@ -123,7 +126,7 @@ def optimize_resumes_job(job_id, data, user_id):
             raise ValueError("Insufficient accessible resumes for optimization analysis.")
             
         db.update_job_status(job_id, 'Calculating ATS weights', 40)
-        socket_emitter.emit(f'job:{job_id}', {'status': 'Calculating ATS weights', 'progress': 40})
+        socket_emitter.emit(f'job:{job_id}', {'status': 'Calculating ATS weights', 'progress': 40}, namespace='/')
         
         # Safe Early-Exit: Check if user cancelled before invoking heavy comparative LLM logic
         j_check = db.get_job(job_id)
@@ -136,7 +139,7 @@ def optimize_resumes_job(job_id, data, user_id):
         raw_results = comparison.compare_resumes(resume_list, job_description)
         
         db.update_job_status(job_id, 'Synthesizing AI recommendations', 80)
-        socket_emitter.emit(f'job:{job_id}', {'status': 'Synthesizing AI recommendations', 'progress': 80})
+        socket_emitter.emit(f'job:{job_id}', {'status': 'Synthesizing AI recommendations', 'progress': 80}, namespace='/')
         
         # Formatting results payload to map front-end expectations
         best_resume = raw_results['metrics'][0] if raw_results.get('metrics') else None
@@ -151,16 +154,16 @@ def optimize_resumes_job(job_id, data, user_id):
         
         notif_msg = f"Your resume optimization comparison is ready."
         db.create_notification(user_id, job_id, notif_msg)
-        socket_emitter.emit('notification:new', {'user_id': user_id, 'message': notif_msg}, room=f"user_{user_id}")
+        socket_emitter.emit('notification:new', {'user_id': user_id, 'message': notif_msg}, room=f"user_{user_id}", namespace='/')
         
-        socket_emitter.emit(f'job:{job_id}', {'status': 'completed', 'progress': 100, 'result': final_result})
+        socket_emitter.emit(f'job:{job_id}', {'status': 'completed', 'progress': 100, 'result': final_result}, namespace='/')
         return {"status": "success", "job_id": job_id}
         
     except Exception as e:
         print(f"CELERY OPTIMIZATION ERROR: {e}")
         friendly_error = f"We encountered an error during optimization: {str(e)}"
         db.update_job_status(job_id, 'failed', 0)
-        socket_emitter.emit(f'job:{job_id}', {'status': 'failed', 'progress': 0, 'error': friendly_error})
+        socket_emitter.emit(f'job:{job_id}', {'status': 'failed', 'progress': 0, 'error': friendly_error}, namespace='/')
         return {"status": "error", "error": friendly_error}
 
 @celery_app.task(name='tasks.compare_resumes_job')
@@ -171,7 +174,7 @@ def compare_resumes_job(job_id, data, user_id):
     try:
         def update_status(msg, prog):
             db.update_job_status(job_id, msg, prog)
-            socket_emitter.emit(f'job:{job_id}', {'status': msg, 'progress': prog})
+            socket_emitter.emit(f'job:{job_id}', {'status': msg, 'progress': prog}, namespace='/')
             
         update_status('✓ Resumes Loaded', 15)
         
@@ -201,15 +204,15 @@ def compare_resumes_job(job_id, data, user_id):
         
         notif_msg = f"Your Candidate AI Comparison is ready."
         db.create_notification(user_id, job_id, notif_msg)
-        socket_emitter.emit('notification:new', {'user_id': user_id, 'message': notif_msg}, room=f"user_{user_id}")
+        socket_emitter.emit('notification:new', {'user_id': user_id, 'message': notif_msg}, room=f"user_{user_id}", namespace='/')
         
-        socket_emitter.emit(f'job:{job_id}', {'status': 'completed', 'progress': 100, 'result': results})
+        socket_emitter.emit(f'job:{job_id}', {'status': 'completed', 'progress': 100, 'result': results}, namespace='/')
         return {"status": "success", "job_id": job_id}
         
     except Exception as e:
         print(f"CELERY COMPARISON ERROR: {e}")
         friendly_error = f"We encountered an error during comparison: {str(e)}"
         db.update_job_status(job_id, 'failed', 0)
-        socket_emitter.emit(f'job:{job_id}', {'status': 'failed', 'progress': 0, 'error': friendly_error})
+        socket_emitter.emit(f'job:{job_id}', {'status': 'failed', 'progress': 0, 'error': friendly_error}, namespace='/')
         return {"status": "error", "error": friendly_error}
 
