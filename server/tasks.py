@@ -19,7 +19,8 @@ if RAW_REDIS.startswith('rediss://') and 'ssl_cert_reqs' not in RAW_REDIS:
     SOCKET_REDIS_URL = f"{RAW_REDIS}{separator}ssl_cert_reqs=none"
 
 # Phase 4: External Emitter for Celery Workers (Write-Only to prevent blocking background listeners!)
-socket_emitter = socketio.RedisManager(SOCKET_REDIS_URL, write_only=True)
+# IMPORTANT: channel MUST be 'flask-socketio' to match the web server's listener
+socket_emitter = socketio.RedisManager(SOCKET_REDIS_URL, channel='flask-socketio', write_only=True)
 
 @celery_app.task(name='tasks.analyze_resume_job')
 def analyze_resume_job(job_id, data, user_id):
