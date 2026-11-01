@@ -1,20 +1,17 @@
 from google import genai
 from google.genai import types
 import json
-import os
-from dotenv import load_dotenv
+import logging
+from config import settings
 
-# Bulletproof Pathing: Always load the correct .env
-base_dir = os.path.dirname(os.path.abspath(__file__))
-dotenv_path = os.path.join(base_dir, '.env')
-load_dotenv(dotenv_path)
+logger = logging.getLogger(__name__)
 
 # 1. Initialize next-gen Gemini v2 Client
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_API_KEY = settings.gemini_api_key
 client = None
 
 if not GEMINI_API_KEY:
-    print("CRITICAL WARNING: GEMINI_API_KEY is missing in server/.env.")
+    logger.warning("gemini_client_not_configured")
 else:
     # Upgrade: Unified modular instantiation 
     client = genai.Client(api_key=GEMINI_API_KEY)
@@ -37,20 +34,20 @@ def query_gemini(prompt, format_json=True):
              
         # Leverage explicit stable alias confirmed accessible via live probe
         response = client.models.generate_content(
-            model='gemini-flash-latest', 
+            model=settings.gemini_model,
             contents=prompt,
             config=config
         )
         
         if not response or not response.text:
-             print("GEMINI V2 DEBUG: Null response block received.")
+             logger.warning("gemini_returned_empty_response")
              return "{}" if format_json else "Error: AI engine returned a null payload."
              
         return response.text
         
-    except Exception as e:
-        print(f"GEMINI V2 ERROR TRACE: {e}")
-        return "{}" if format_json else f"Internal Logic Fault: {str(e)}"
+    except Exception:
+        logger.exception("gemini_request_failed")
+        return "{}" if format_json else "The AI service is temporarily unavailable. Please try again."
 
 def get_chat_response(context, question):
     """
@@ -117,7 +114,7 @@ def analyze_resume_ats(sections, job_description):
     ### TARGET SPECIFICATION ###
     {job_description}
     """
-    print(f"GEMINI V2 ENGINE: Routing analyzing sequence ({len(formatted_corpus)} chars)...")
+    logger.info("gemini_analysis_started corpus_chars=%s", len(formatted_corpus))
     return query_gemini(prompt, format_json=True)
 
 def get_global_chat_response(context, question):

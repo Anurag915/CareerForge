@@ -69,7 +69,9 @@ export const useJobTracker = () => {
 
   useEffect(() => {
     if (!globalSocket) {
-        globalSocket = io(import.meta.env.VITE_API_URL || "http://127.0.0.1:5000");
+        globalSocket = io(import.meta.env.VITE_API_URL || "http://127.0.0.1:5000", {
+          auth: { token: localStorage.getItem("accessToken") }
+        });
     }
     socketRef.current = globalSocket;
   }, []); // Only initialize on mount, never disconnect to preserve singleton lifecycle

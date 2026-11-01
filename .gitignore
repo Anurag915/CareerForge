@@ -4,3 +4,5 @@ server/data/
 *.db
 *.index
 *.chunks
+*.log
+server/*_log.txt

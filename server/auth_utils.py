@@ -1,30 +1,25 @@
 import datetime
 import hashlib
 import secrets
-import os
 import jwt
 import smtplib
+import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from dotenv import load_dotenv
+from config import settings
 
-# Enforce paths
-base_dir = os.path.dirname(os.path.abspath(__file__))
-dotenv_path = os.path.join(base_dir, '.env')
-load_dotenv(dotenv_path)
+logger = logging.getLogger(__name__)
 
 # Configuration
-JWT_SECRET = os.getenv("JWT_SECRET")
-if not JWT_SECRET:
-    raise ValueError("FATAL ERROR: JWT_SECRET environment variable is not set! You must provide a secure cryptographic key for production deployments.")
-JWT_ALGORITHM = "HS256"
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+JWT_SECRET = settings.jwt_secret
+JWT_ALGORITHM = settings.jwt_algorithm
+FRONTEND_URL = settings.frontend_url
 
 # SMTP Configuration
-SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", 465)) # 465 for SSL, 587 for TLS
-SMTP_USER = os.getenv("SMTP_USER")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+SMTP_HOST = settings.smtp_host
+SMTP_PORT = settings.smtp_port
+SMTP_USER = settings.smtp_user
+SMTP_PASSWORD = settings.smtp_password
 
 def generate_access_token(user_data):
     """
@@ -58,7 +53,7 @@ def send_verification_email(user_email, raw_token):
     Sends a branded email verification link using Gmail SMTP.
     """
     if not SMTP_USER or not SMTP_PASSWORD:
-        print(f"⚠️ SKIPPED EMAIL DISPATCH: SMTP credentials not configured. Token: {raw_token}")
+        logger.warning("verification_email_skipped smtp_not_configured")
         return False
 
     verify_link = f"{FRONTEND_URL}/verify-email?token={raw_token}"
@@ -100,8 +95,8 @@ def send_verification_email(user_email, raw_token):
                 server.login(SMTP_USER, SMTP_PASSWORD)
                 server.send_message(msg)
         return True
-    except Exception as e:
-        print(f"❌ SMTP FAIL: {e}")
+    except Exception:
+        logger.exception("verification_email_failed")
         return False
 
 def send_reset_password_email(user_email, raw_token):
@@ -109,7 +104,7 @@ def send_reset_password_email(user_email, raw_token):
     Sends a password recovery token using Gmail SMTP.
     """
     if not SMTP_USER or not SMTP_PASSWORD:
-        print(f"⚠️ SKIPPED EMAIL DISPATCH: SMTP credentials not configured. Reset Token: {raw_token}")
+        logger.warning("password_reset_email_skipped smtp_not_configured")
         return False
 
     reset_link = f"{FRONTEND_URL}/reset-password?token={raw_token}"
@@ -153,6 +148,6 @@ def send_reset_password_email(user_email, raw_token):
                 server.login(SMTP_USER, SMTP_PASSWORD)
                 server.send_message(msg)
         return True
-    except Exception as e:
-        print(f"❌ SMTP FAIL: {e}")
+    except Exception:
+        logger.exception("password_reset_email_failed")
         return False

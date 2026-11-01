@@ -2,23 +2,23 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from psycopg2.pool import ThreadedConnectionPool
 import json
-import os
-from dotenv import load_dotenv
+import logging
+from config import settings
 
-# Bulletproof Pathing: Always find the .env relative to this python file's location
-base_dir = os.path.dirname(os.path.abspath(__file__))
-dotenv_path = os.path.join(base_dir, '.env')
-load_dotenv(dotenv_path)
+logger = logging.getLogger(__name__)
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = settings.database_url
 
 db_pool = None
 
 def init_pool():
     global db_pool
     if db_pool is None and DATABASE_URL:
-        # Minimum 1 connection, maximum 20 concurrent connections
-        db_pool = ThreadedConnectionPool(1, 20, DATABASE_URL)
+        db_pool = ThreadedConnectionPool(
+            settings.db_pool_min,
+            settings.db_pool_max,
+            DATABASE_URL,
+        )
 
 class PooledConnectionWrapper:
     def __init__(self):
@@ -225,8 +225,8 @@ def save_user(user_data):
         ))
         conn.commit()
         return True
-    except Exception as e:
-        print(f"DB DEBUG: Error saving user: {e}")
+    except Exception:
+        logger.exception("user_save_failed email=%s", user_data.get('email'))
         conn.rollback()
         return False
     finally:
@@ -354,51 +354,6 @@ def get_all_user_jobs(user_id):
     conn.close()
     return jobs
 
-# --- LEGACY/HIDDEN CHAT COLLISION MIGRATION (Preserved to match git history) ---
-
-def save_chat_message(user_id, role, content, resume_id=None):
-    """ 
-    LEGACY SIGNATURE. NOTE: In active codebase, this matches lines 224-237.
-    Will likely fail on execution as schema differs, but preserved for state sync.
-    """
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('''
-            INSERT INTO chat_messages (user_id, role, content, resume_id)
-            VALUES (%s, %s, %s, %s)
-        ''', (user_id, role, content, resume_id))
-        conn.commit()
-        conn.close()
-        return True
-    except Exception as e:
-        print(f"DB DEBUG: Error in legacy chat insert: {e}")
-        return False
-
-def get_chat_history(user_id, resume_id=None):
-    """
-    LEGACY SIGNATURE. NOTE: Preserves structure from lines 239-266.
-    """
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        if resume_id:
-            cursor.execute('''
-                SELECT role, content, created_at FROM chat_messages
-                WHERE user_id = %s AND resume_id = %s ORDER BY created_at ASC
-            ''', (user_id, resume_id))
-        else:
-            cursor.execute('''
-                SELECT role, content, created_at FROM chat_messages
-                WHERE user_id = %s AND resume_id IS NULL ORDER BY created_at ASC
-            ''', (user_id,))
-        messages = [dict(row) for row in cursor.fetchall()]
-        conn.close()
-        return messages
-    except Exception as e:
-        print(f"DB DEBUG: Error getting legacy history: {e}")
-        return []
-
 # --- JOB SYSTEM UTILITIES ---
 
 def create_job(user_id, job_type, name=None):
@@ -424,10 +379,10 @@ def update_job_status(job_id, status, progress=0):
     if status not in ['completed', 'failed', 'pending', 'cancelled']:
         cursor.execute('''
             UPDATE jobs SET status = %s, progress = %s, started_at = %s 
-            WHERE id = %s AND started_at IS NULL
+            WHERE id = %s AND started_at IS NULL AND status <> 'cancelled'
         ''', (status, progress, now, job_id))
         cursor.execute('''
-            UPDATE jobs SET status = %s, progress = %s WHERE id = %s
+            UPDATE jobs SET status = %s, progress = %s WHERE id = %s AND status <> 'cancelled'
         ''', (status, progress, job_id))
     else:
         cursor.execute('''
@@ -442,10 +397,13 @@ def update_job_result(job_id, result_dict):
     cursor = conn.cursor()
     now = datetime.datetime.now(datetime.timezone.utc)
     cursor.execute('''
-        UPDATE jobs SET status = 'completed', progress = 100, result = %s, completed_at = %s WHERE id = %s
+        UPDATE jobs SET status = 'completed', progress = 100, result = %s, completed_at = %s
+        WHERE id = %s AND status <> 'cancelled'
     ''', (json.dumps(result_dict), now, job_id))
+    updated = cursor.rowcount == 1
     conn.commit()
     conn.close()
+    return updated
 
 def get_job(job_id):
     conn = get_db_connection()
@@ -863,8 +821,8 @@ def validate_and_revoke_refresh_token(old_token_hash, new_token_hash, new_expire
         
         conn.commit()
         return user_id
-    except Exception as e:
-        print(f"DB ERR: Token rotation failed: {e}")
+    except Exception:
+        logger.exception("refresh_token_rotation_failed")
         conn.rollback()
         return None
     finally:

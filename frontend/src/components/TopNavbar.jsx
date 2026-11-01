@@ -89,8 +89,9 @@ const TopNavbar = ({ user, logout, theme, toggleTheme, onTabClick }) => {
 
     useEffect(() => {
         if (!user) return;
-        const socket = io(import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000');
-        socket.emit('join', { user_id: user.user_id });
+        const socket = io(import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000', {
+            auth: { token: localStorage.getItem('accessToken') }
+        });
 
         socket.on('notification:new', () => {
             queryClient.invalidateQueries({ queryKey: ['unread-count', user?.user_id] });

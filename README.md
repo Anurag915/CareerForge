@@ -87,13 +87,11 @@ CareerForge deliberately separates deterministic scoring from generated feedback
 4. Gemini generates critiques, comparisons, suggestions, and chat responses.
 5. Validation and cleanup utilities normalize model output before it reaches the UI.
 
-The active Gemini model is configured in [`server/llm.py`](server/llm.py):
+The active Gemini model is configured through `GEMINI_MODEL` and defaults in [`server/config.py`](server/config.py):
 
 ```python
-model="gemini-flash-latest"
+GEMINI_MODEL=gemini-flash-latest
 ```
-
-`server/pipeline.py` contains an older Ollama-based experimental pipeline, but it is not called by the current API or Celery tasks.
 
 ## Repository Structure
 
@@ -109,6 +107,9 @@ CareerForge/
 |   `-- Dockerfile
 |-- server/
 |   |-- api.py               # Flask routes and Socket.IO server
+|   |-- config.py            # Validated environment configuration
+|   |-- observability.py     # JSON logging and request tracing
+|   |-- job_dispatcher.py    # Background-job dispatch policy
 |   |-- auth_utils.py        # JWT, refresh tokens, and email delivery
 |   |-- db.py                # PostgreSQL persistence
 |   |-- tasks.py             # Celery analysis jobs
@@ -157,9 +158,15 @@ Required variables:
 |---|---|
 | `DATABASE_URL` | PostgreSQL connection string |
 | `GEMINI_API_KEY` | Google Gemini API access |
+| `GEMINI_MODEL` | Gemini model name; defaults to `gemini-flash-latest` |
+| `EMBEDDING_MODEL` | Sentence Transformer model name |
 | `JWT_SECRET` | Secret used to sign access tokens |
 | `REDIS_URL` | Celery broker and Socket.IO message queue |
 | `FRONTEND_URL` | Frontend origin used in email links and CORS |
+| `CORS_ORIGINS` | Comma-separated list of trusted browser origins |
+| `MAX_UPLOAD_MB` | Maximum request size for uploaded PDFs |
+| `MAX_PDF_PAGES` | Maximum pages parsed from one PDF |
+| `PDF_PROCESSING_TIMEOUT_SECONDS` | PDF parsing time budget |
 
 Optional or feature-specific variables:
 
@@ -383,7 +390,9 @@ Do not describe the current system as fully local or offline. Only deterministic
 
 - The frontend bundle is large and should be code-split.
 - Automated backend and end-to-end tests still need to be added.
-- `server/pipeline.py` and `server/main.py` contain legacy or diagnostic code.
+- Database schema creation still needs to move to versioned migrations.
+- Authenticated, user-scoped Socket.IO job subscriptions require the corresponding frontend socket-token update.
+- Multi-host FAISS writers should be replaced with a managed vector store or coordinated through a distributed lock.
 - Production deployments should use managed secrets, HTTPS, persistent storage, and production Redis.
 
 ## License

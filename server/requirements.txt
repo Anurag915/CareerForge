@@ -7,13 +7,9 @@ celery
 redis
 PyJWT
 bcrypt
-python-docx
-PyPDF2
-ollama
 sentence-transformers
 faiss-cpu
 numpy
-requests
 pdfplumber
 psycopg2-binary
 python-dotenv

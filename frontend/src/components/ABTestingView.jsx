@@ -52,7 +52,9 @@ const ABTestingView = () => {
 
     // Setup socket on mount
     useEffect(() => {
-        socketRef.current = io(import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000');
+        socketRef.current = io(import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000', {
+            auth: { token: localStorage.getItem('accessToken') }
+        });
         return () => {
             if (socketRef.current) socketRef.current.disconnect();
         };

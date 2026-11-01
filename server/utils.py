@@ -2,12 +2,22 @@ import pdfplumber
 import json
 import re
 import math
+import logging
+import time
 from collections import Counter
+from config import settings
+
+logger = logging.getLogger(__name__)
 
 def extract_text(file):
     text = ""
+    deadline = time.monotonic() + settings.pdf_processing_timeout_seconds
     with pdfplumber.open(file) as pdf:
+        if len(pdf.pages) > settings.max_pdf_pages:
+            raise ValueError(f"PDF exceeds the {settings.max_pdf_pages}-page limit")
         for page in pdf.pages:
+            if time.monotonic() > deadline:
+                raise TimeoutError("PDF processing exceeded the configured time limit")
             text += page.extract_text() or ""
     return text
 
@@ -90,7 +100,7 @@ def extract_sections(text):
     # Simple blacklist to avoid names/noise being treated as headers
     HEADER_BLACKLIST = ["anurag prajapati", "curriculum vitae", "resume", "contact", "details"]
     
-    print(f"DEBUG - STARTING FLEXIBLE EXTRACTION ON {len(lines)} LINES")
+    logger.debug("section_extraction_started line_count=%s", len(lines))
     
     for line in lines:
         stripped = line.strip()
@@ -130,7 +140,7 @@ def extract_sections(text):
                 if header_name not in sections["other_sections"]:
                     sections["other_sections"][header_name] = ""
             
-            print(f"DEBUG - DETECTED HEADER: '{stripped}' -> MAPS TO: {current_section}")
+            logger.debug("section_header_detected header=%s section=%s", stripped, current_section)
             continue
             
         # 2. Append content to current section
@@ -149,8 +159,7 @@ def extract_sections(text):
         else:
             sections[k] = sections[k].strip()
             
-    print("DETECTED HEADERS:", detected_headers)
-    print("FINAL SECTIONS:", {k: (len(v) if k != "other_sections" else list(v.keys())) for k, v in sections.items()})
+    logger.debug("section_extraction_completed headers=%s", detected_headers)
     
     return sections
 
@@ -260,11 +269,13 @@ def calculate_ats_score(resume_text, jd_text, sections=None):
     
     final_score = round(final_score_raw)
     
-    print(f"DEBUG - WEIGHTED SCORE FOR CANDIDATE:")
-    print(f"  > Skills: {round(skill_score*100)}% (Weight 0.6)")
-    print(f"  > Experience: {round(experience_score*100)}% (Weight 0.25)")
-    print(f"  > Projects: {round(project_score*100)}% (Weight 0.15)")
-    print(f"  > TOTAL: {final_score}%")
+    logger.debug(
+        "ats_score_calculated skills=%s experience=%s projects=%s total=%s",
+        round(skill_score * 100),
+        round(experience_score * 100),
+        round(project_score * 100),
+        final_score,
+    )
     
     return {
         "ats_score": final_score,
