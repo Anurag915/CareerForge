@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserPlus, Mail, Lock, User, Briefcase, Loader2, AlertCircle, ArrowLeft, ChevronDown, CheckCircle2, Inbox, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, User, Briefcase, Loader2, AlertCircle, ChevronDown, CheckCircle2, Inbox, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 
 import { useAuth } from '../context/AuthContext';
 
@@ -58,15 +58,15 @@ const SignupPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex text-slate-900 dark:text-slate-100 font-sans theme-transition selection:bg-blue-500/20 selection:text-blue-500">
+        <div className="h-dvh overflow-hidden bg-slate-50 dark:bg-slate-950 flex text-slate-900 dark:text-slate-100 font-sans theme-transition selection:bg-blue-500/20 selection:text-blue-500">
             
             {/* Left Panel - Branding (Desktop only) */}
-            <div className="hidden lg:flex flex-col justify-between w-[45%] max-w-[600px] bg-slate-900 text-white p-12 lg:p-16 relative overflow-hidden border-r border-slate-800">
+            <div className="hidden lg:flex flex-col justify-center w-[44%] max-w-[600px] bg-slate-900 text-white p-10 xl:p-14 relative overflow-hidden border-r border-slate-800">
                 {/* Decorative Gradients */}
                 <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[120px] pointer-events-none" />
                 <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none" />
 
-                <div className="relative z-10 space-y-16">
+                <div className="relative z-10 space-y-10 xl:space-y-12">
                     {/* Logo */}
                     <Link to="/" className="flex items-center space-x-3 w-fit group">
                         <img src="/logo.svg" alt="CareerForge Icon" className="h-10 w-10 object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] brightness-125 group-hover:scale-105 transition-transform" />
@@ -76,16 +76,16 @@ const SignupPage = () => {
                     </Link>
 
                     {/* Value Prop */}
-                    <div className="space-y-6">
-                        <h1 className="text-5xl xl:text-6xl font-black tracking-tight leading-[1.1]">Build a Resume That Gets Interviews</h1>
-                        <p className="text-slate-400 text-lg leading-relaxed max-w-md">
-                            Analyze resumes, improve ATS scores, optimize keywords, and get AI-powered recommendations in seconds.
+                    <div className="space-y-4">
+                        <h1 className="text-4xl xl:text-5xl font-black tracking-tight leading-[1.08]">Turn your resume into an advantage<span className="text-blue-500">.</span></h1>
+                        <p className="text-slate-400 text-base leading-relaxed max-w-md">
+                            Clear scores, useful feedback, and better applications.
                         </p>
                     </div>
 
                     {/* Feature List */}
-                    <ul className="space-y-5">
-                        {['ATS Resume Analysis', 'AI Resume Copilot', 'Resume Comparison', 'Job Match Insights'].map((f, i) => (
+                    <ul className="space-y-3.5">
+                        {['ATS match analysis', 'Focused AI recommendations', 'Resume comparison'].map((f, i) => (
                             <li key={i} className="flex items-center gap-4 text-slate-300">
                                 <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center">
                                     <CheckCircle2 className="w-4 h-4 text-blue-400" />
@@ -96,35 +96,24 @@ const SignupPage = () => {
                     </ul>
                 </div>
 
-                {/* Subtle Statistics */}
-                <div className="relative z-10 flex gap-12 pt-12 border-t border-slate-800/50 mt-12">
-                    <div>
-                        <div className="text-3xl font-black tracking-tight">10,000+</div>
-                        <div className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-1.5">Resumes Analyzed</div>
-                    </div>
-                    <div>
-                        <div className="text-3xl font-black tracking-tight">94%</div>
-                        <div className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-1.5">ATS Accuracy</div>
-                    </div>
-                </div>
             </div>
 
             {/* Right Panel - Auth Form */}
-            <div className="flex-1 flex flex-col items-center justify-center p-6 relative overflow-y-auto">
+            <div className="flex-1 min-h-0 flex flex-col items-center justify-center px-5 py-3 relative overflow-hidden">
                 {/* Mobile Brand Navigation */}
-                <Link to="/" className="absolute top-8 left-6 lg:hidden flex items-center gap-3 group z-20 hover:scale-105 opacity-90 hover:opacity-100 transition-all duration-200">
+                <Link to="/" className="absolute top-4 left-5 lg:hidden flex items-center gap-3 group z-20 hover:scale-105 opacity-90 hover:opacity-100 transition-all duration-200">
                     <img src="/logo.svg" alt="CareerForge Icon" className="h-8 w-8 object-contain dark:drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] dark:brightness-125" />
                     <span className="text-xl font-extrabold tracking-tight font-outfit">
                         <span className="text-slate-900 dark:text-white">Career</span><span className="text-blue-500 dark:text-blue-400">Forge</span>
                     </span>
                 </Link>
 
-                <div className="w-full max-w-[460px] space-y-8 py-12">
+                <div className="w-full max-w-[440px] mt-12 lg:mt-0">
                     {!signupSuccess ? (
-                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+                        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
                             
                             {/* Mobile Logo & Header */}
-                            <div className="text-left space-y-3">
+                            <div className="text-left space-y-1.5">
                                 <div className="lg:hidden flex items-center space-x-3 mb-8 hidden">
                                     <img src="/logo.svg" alt="CareerForge Icon" className="h-12 w-12 object-contain dark:drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] dark:brightness-125" />
                                     <span className="text-3xl font-extrabold tracking-tight font-outfit">
@@ -132,11 +121,11 @@ const SignupPage = () => {
                                     </span>
                                 </div>
                                 <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Create an account</h2>
-                                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Get ATS scores, resume insights, and AI-powered recommendations to improve your chances of landing interviews.</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Create your account and improve your next application.</p>
                             </div>
 
-                            <form onSubmit={handleSubmit} className="space-y-5">
-                                <div className="space-y-4">
+                            <form onSubmit={handleSubmit} className="space-y-3">
+                                <div className="space-y-2.5">
                                     {/* Full Name */}
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-bold text-slate-600 dark:text-slate-400 px-1">Full Name</label>
@@ -145,7 +134,7 @@ const SignupPage = () => {
                                             <input 
                                                 type="text"
                                                 required
-                                                className="w-full pl-11 pr-4 py-3.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 dark:focus:border-blue-400 transition-all text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 font-medium shadow-sm"
+                                                className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 dark:focus:border-blue-400 transition-all text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 font-medium shadow-sm"
                                                 placeholder="John Doe"
                                                 value={formData.name}
                                                 onChange={(e) => setFormData({...formData, name: e.target.value})}
@@ -161,7 +150,7 @@ const SignupPage = () => {
                                             <input 
                                                 type="email"
                                                 required
-                                                className="w-full pl-11 pr-4 py-3.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 dark:focus:border-blue-400 transition-all text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 font-medium shadow-sm"
+                                                className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 dark:focus:border-blue-400 transition-all text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 font-medium shadow-sm"
                                                 placeholder="john@example.com"
                                                 value={formData.email}
                                                 onChange={(e) => setFormData({...formData, email: e.target.value})}
@@ -176,7 +165,7 @@ const SignupPage = () => {
                                             <button
                                                 type="button"
                                                 onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
-                                                className="w-full pl-11 pr-11 py-3.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 dark:focus:border-blue-400 transition-all text-sm text-left text-slate-900 dark:text-slate-100 font-medium shadow-sm relative block"
+                                                className="w-full pl-11 pr-11 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 dark:focus:border-blue-400 transition-all text-sm text-left text-slate-900 dark:text-slate-100 font-medium shadow-sm relative block"
                                             >
                                                 <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500 pointer-events-none" />
                                                 <span className="truncate block">{roles.find(r => r.value === formData.role)?.label}</span>
@@ -224,7 +213,7 @@ const SignupPage = () => {
                                             <input 
                                                 type={showPassword ? "text" : "password"}
                                                 required
-                                                className="w-full pl-11 pr-12 py-3.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 dark:focus:border-blue-400 transition-all text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 font-medium shadow-sm"
+                                                className="w-full pl-11 pr-12 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 dark:focus:border-blue-400 transition-all text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 font-medium shadow-sm"
                                                 placeholder="••••••••"
                                                 value={formData.password}
                                                 onChange={(e) => setFormData({...formData, password: e.target.value})}
@@ -238,15 +227,15 @@ const SignupPage = () => {
                                             </button>
                                         </div>
                                         {/* Password Requirements */}
-                                        <div className="flex flex-col gap-1.5 pt-2 px-1">
+                                        <div className="grid grid-cols-3 gap-2 pt-1 px-1">
                                             <div className={`flex items-center gap-2 text-[11px] font-bold transition-colors ${minLength ? 'text-emerald-500' : 'text-slate-400'}`}>
-                                                <CheckCircle2 className="w-3.5 h-3.5" /> <span>Minimum 8 characters</span>
+                                                <CheckCircle2 className="w-3 h-3 shrink-0" /> <span>8+ characters</span>
                                             </div>
                                             <div className={`flex items-center gap-2 text-[11px] font-bold transition-colors ${hasNumber ? 'text-emerald-500' : 'text-slate-400'}`}>
-                                                <CheckCircle2 className="w-3.5 h-3.5" /> <span>At least 1 number</span>
+                                                <CheckCircle2 className="w-3 h-3 shrink-0" /> <span>1 number</span>
                                             </div>
                                             <div className={`flex items-center gap-2 text-[11px] font-bold transition-colors ${hasSpecial ? 'text-emerald-500' : 'text-slate-400'}`}>
-                                                <CheckCircle2 className="w-3.5 h-3.5" /> <span>At least 1 special character</span>
+                                                <CheckCircle2 className="w-3 h-3 shrink-0" /> <span>1 symbol</span>
                                             </div>
                                         </div>
                                     </div>
@@ -263,13 +252,13 @@ const SignupPage = () => {
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <span>Create Account</span>}
                                 </button>
                                 
                                 {/* Trust Indicators */}
-                                <div className="flex items-center justify-center gap-4 pt-2">
+                                <div className="hidden sm:flex items-center justify-center gap-4">
                                     <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                                         <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
                                         <span>Secure</span>
@@ -283,14 +272,14 @@ const SignupPage = () => {
                             </form>
 
                             {/* Redirect */}
-                            <div className="text-center pt-4 border-t border-slate-200 dark:border-slate-800/50">
+                            <div className="text-center pt-3 border-t border-slate-200 dark:border-slate-800/50">
                                 <p className="text-sm text-slate-600 dark:text-slate-400">
                                     Already have an account? <Link to="/login" className="text-blue-600 dark:text-blue-400 font-bold hover:underline">Sign in</Link>
                                 </p>
                             </div>
                         </motion.div>
                     ) : (
-                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-8 text-center py-12">
+                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6 text-center py-4">
                             <div className="flex justify-center">
                                 <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 rounded-3xl flex items-center justify-center shadow-inner border border-emerald-100 dark:border-emerald-500/20 relative">
                                     <Inbox className="w-10 h-10" />

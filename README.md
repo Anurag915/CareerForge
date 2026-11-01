@@ -1,425 +1,391 @@
-# CareerForge: AI Resume Analyzer & Intelligence Platform
+# CareerForge
 
-**CareerForge** is a production-grade, event-driven SaaS platform designed for high-scale resume analysis. It leverages Local LLMs, RAG (Retrieval-Augmented Generation), and a distributed task queue (Celery + Redis) to provide real-time, professional-grade career insights without blocking the user interface.
+CareerForge is an AI-assisted resume analysis and candidate comparison platform. It combines deterministic ATS scoring with Google Gemini, semantic retrieval, background processing, and a React dashboard to help candidates and hiring teams evaluate resumes against real job descriptions.
 
----
+> CareerForge currently uses **Google Gemini (`gemini-flash-latest`)** for generated analysis and chat responses. Ollama is no longer part of the active application path.
 
-## 🚀 Key Features
+## What CareerForge Does
 
-### 👤 For Candidates & Recruiters
-- **Real-Time Job Queue**: Monitor analysis progress live via WebSockets.
-- **Asynchronous Analysis**: Upload dozens of resumes; the system processes them in the background while you continue working.
-- **Professional Notifications**: Get notified instantly when a job completes, with a persistent unread badge and history.
-- **Deterministic ATS Scoring**: A transparent, weighted scoring engine mirrors real-world recruitment logic.
-- **AI Career Chat**: Interactive RAG-based chat to ask specific questions about your resume.
+- Scores resumes against a target job description.
+- Identifies matched and missing skills.
+- Produces focused AI recommendations and resume critiques.
+- Compares multiple resumes and ranks candidates.
+- Provides resume-aware AI chat using semantic retrieval.
+- Stores resumes, analysis history, comparisons, jobs, and notifications.
+- Processes long-running analysis through Celery and Redis.
+- Streams job progress and notifications through Socket.IO.
+- Supports candidate and hiring-manager accounts.
+- Includes email verification, password recovery, and rotating refresh tokens.
 
----
+## Product Preview
 
-## 📸 Product Gallery
-
-| | |
+| Dashboard | Resume Upload |
 |:---:|:---:|
-| **Dashboard Overview** | **Seamless Document Upload** |
 | ![Dashboard](Outputs/Screenshot%202026-05-05%20161711.png) | ![Upload](Outputs/Screenshot%202026-05-05%20161728.png) |
-| **Target Job Description** | **Deep Analysis Dashboard** |
-| ![Job Description](Outputs/Screenshot%202026-05-05%20161802.png) | ![Analysis](Outputs/Screenshot%202026-05-05%20161928.png) |
-| **ATS Match Report** | **Contextual AI Chat Assistant** |
-| ![Analysis Metrics](Outputs/Screenshot%202026-05-05%20161948.png) | ![Chat UI](Outputs/Screenshot%202026-05-05%20162008.png) |
-| **Multi-Resume A/B Comparison** | **Comparative Insights Engine** |
-| ![Resume Comparison](Outputs/Screenshot%202026-05-05%20162253.png) | ![Result of Comparison](Outputs/Screenshot%202026-05-05%20162304.png) |
-| **Active Job Queue** | **Persistent Search History** |
-| ![Library of All Jobs](Outputs/Screenshot%202026-05-05%20162324.png) | ![History of All Jobs](Outputs/Screenshot%202026-05-05%20162335.png) | 
 
----
+| Analysis | AI Copilot |
+|:---:|:---:|
+| ![Analysis](Outputs/Screenshot%202026-05-05%20161928.png) | ![Chat](Outputs/Screenshot%202026-05-05%20162008.png) |
 
-## 🛠️ Tech Stack
+| Resume Comparison | Job History |
+|:---:|:---:|
+| ![Comparison](Outputs/Screenshot%202026-05-05%20162304.png) | ![History](Outputs/Screenshot%202026-05-05%20162335.png) |
 
-### Backend (Distributed Engine)
-- **API**: Python & Flask (REST + Socket.IO)
-- **Task Queue**: Celery (Distributed Processing)
-- **Message Broker**: Redis (High-speed Event Bus)
-- **Server Engine**: Eventlet (High-concurrency support)
-- **AI/ML**: Sentence-Transformers & FAISS (RAG)
-- **LLM**: Ollama (Llama 3 / Phi-3)
+## Architecture
 
-### Frontend (Modern SaaS UI)
-- **Core**: React & Vite
-- **Real-time**: Socket.IO-Client
-- **Styling**: Tailwind CSS & Framer Motion
-- **Icons**: Lucide-React
+```text
+React 19 + Vite
+       |
+       | REST + Socket.IO
+       v
+Flask API
+  |-- PostgreSQL: users, resumes, jobs, analyses, chat, notifications
+  |-- Redis: Celery broker and Socket.IO message queue
+  |-- Celery: background analysis and comparison jobs
+  |-- Gemini: resume critique, comparisons, and chat responses
+  |-- Sentence Transformers + FAISS: semantic resume retrieval
+  |-- Cloudinary: optional persistent PDF storage
+  `-- SMTP: verification and password-reset email
+```
 
----
+## Technology Stack
 
-## ⚙️ Installation & Setup
+### Frontend
 
-Choose your operating system below to set up all system dependencies (Python, Node.js, Redis, and Ollama) properly.
+- React 19
+- Vite 8
+- React Router
+- TanStack Query
+- Tailwind CSS 4
+- Framer Motion
+- Socket.IO Client
+- Axios
+- React PDF Viewer
+- Lucide icons
 
----
+### Backend
 
-### 🪟 Windows Setup Guide
+- Python and Flask
+- Flask-SocketIO
+- PostgreSQL with `psycopg2`
+- Celery and Redis
+- Google Gen AI SDK
+- Sentence Transformers
+- FAISS
+- `pdfplumber` and PyPDF2
+- JWT and bcrypt authentication
+- Cloudinary
+- Gunicorn and Gevent for Linux production
 
-#### 1. System Dependencies Installation
-*   **Python (3.9+)**: 
-    *   Download and run the installer from the [Python Downloads](https://www.python.org/downloads/) page. **Crucial:** Ensure you check the box that says **"Add Python to PATH"** before starting the installation.
-    *   *Alternative (via PowerShell):* `winget install Python.Python.3.11`
-*   **Node.js (LTS)**:
-    *   Download and run the installer from the [Node.js Official Website](https://nodejs.org/).
-    *   *Alternative (via PowerShell):* `winget install OpenJS.NodeJS.LTS`
-*   **Redis Server**: Redis does not natively run on Windows. Choose one of the options below:
-    *   **Option A: WSL2 (Recommended)**: Install WSL with `wsl --install` in PowerShell, restart your PC, open your Ubuntu/Linux terminal, and run:
-        ```bash
-        sudo apt update
-        sudo apt install redis-server -y
-        sudo service redis-server start
-        ```
-    *   **Option B: Docker**: Install Docker Desktop and run:
-        ```powershell
-        docker run -d -p 6379:6379 --name redis redis
-        ```
-    *   **Option C: Memurai**: Download and install [Memurai](https://www.memurai.com/) (a native Windows Redis compatible developer build).
-*   **Ollama (Local LLM)**:
-    *   Download and install from [Ollama's Website](https://ollama.com/download/windows).
-    *   Once Ollama is running in your system tray, open PowerShell and pull the model:
-        ```powershell
-        ollama pull llama3
-        ```
+## AI and Scoring Pipeline
 
-#### 2. Project Setup & Installation
-Open PowerShell in the project root directory and run:
+CareerForge deliberately separates deterministic scoring from generated feedback.
+
+1. The uploaded PDF is parsed into text and resume sections.
+2. Rule-based logic calculates ATS compatibility, skill matches, experience, and project signals.
+3. `all-MiniLM-L6-v2` creates local embeddings for FAISS retrieval.
+4. Gemini generates critiques, comparisons, suggestions, and chat responses.
+5. Validation and cleanup utilities normalize model output before it reaches the UI.
+
+The active Gemini model is configured in [`server/llm.py`](server/llm.py):
+
+```python
+model="gemini-flash-latest"
+```
+
+`server/pipeline.py` contains an older Ollama-based experimental pipeline, but it is not called by the current API or Celery tasks.
+
+## Repository Structure
+
+```text
+CareerForge/
+|-- frontend/
+|   |-- src/
+|   |   |-- api/             # React Query hooks and mutations
+|   |   |-- components/      # Pages and reusable UI
+|   |   |-- context/         # Authentication, chat, and theme state
+|   |   `-- services/        # Axios API client
+|   |-- public/              # Logos and public assets
+|   `-- Dockerfile
+|-- server/
+|   |-- api.py               # Flask routes and Socket.IO server
+|   |-- auth_utils.py        # JWT, refresh tokens, and email delivery
+|   |-- db.py                # PostgreSQL persistence
+|   |-- tasks.py             # Celery analysis jobs
+|   |-- llm.py               # Active Gemini integration
+|   |-- rag.py               # Sentence Transformer and FAISS retrieval
+|   |-- comparison.py        # Candidate comparison pipeline
+|   |-- utils.py             # Parsing and deterministic ATS scoring
+|   |-- validation.py        # Model-output validation
+|   `-- Dockerfile
+|-- Outputs/                 # Product screenshots
+|-- docker-compose.yml
+`-- README.md
+```
+
+## Prerequisites
+
+- Python 3.10 or newer
+- Node.js 20 or newer
+- PostgreSQL database, local or hosted
+- Redis, local or hosted
+- Google Gemini API key
+- Optional Cloudinary account for persistent PDF previews
+- SMTP credentials for account verification and password recovery
+
+The embedding model is downloaded from Hugging Face on the first backend start. Later starts use the local cache.
+
+## Environment Configuration
+
+Copy the example file and fill in your credentials:
+
 ```powershell
-# Setup Backend Virtual Environment & Dependencies
+cd server
+Copy-Item .env.example .env
+```
+
+On macOS or Linux:
+
+```bash
+cd server
+cp .env.example .env
+```
+
+Required variables:
+
+| Variable | Purpose |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `GEMINI_API_KEY` | Google Gemini API access |
+| `JWT_SECRET` | Secret used to sign access tokens |
+| `REDIS_URL` | Celery broker and Socket.IO message queue |
+| `FRONTEND_URL` | Frontend origin used in email links and CORS |
+
+Optional or feature-specific variables:
+
+| Variable | Purpose |
+|---|---|
+| `HF_TOKEN` | Higher Hugging Face download limits |
+| `CLOUDINARY_CLOUD_NAME` | Cloudinary account name |
+| `CLOUDINARY_API_KEY` | Cloudinary API key |
+| `CLOUDINARY_API_SECRET` | Cloudinary API secret |
+| `SMTP_HOST` | SMTP host; defaults to `smtp.gmail.com` |
+| `SMTP_PORT` | SMTP port; defaults to `465` |
+| `SMTP_USER` | Verification-email sender |
+| `SMTP_PASSWORD` | SMTP password or app password |
+
+Generate a strong JWT secret, for example:
+
+```powershell
+python -c "import secrets; print(secrets.token_hex(64))"
+```
+
+Never commit `server/.env` or place secrets in frontend environment variables.
+
+## Local Installation
+
+### Backend
+
+Windows:
+
+```powershell
 cd server
 python -m venv venv
-.\venv\Scripts\activate
-pip install -r requirements.txt
-
-# Setup Frontend Dependencies
-cd ../frontend
-npm install
+.\venv\Scripts\python.exe -m pip install --upgrade pip
+.\venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
----
+macOS or Linux:
 
-### 🍎 macOS Setup Guide
-
-#### 1. System Dependencies Installation
-Using **Homebrew** is the easiest way to install and manage dependencies on macOS. If you don't have it, install it by running:
 ```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-```
-
-*   **Python & Node.js**:
-    ```bash
-    brew install python node
-    ```
-*   **Redis Server**:
-    ```bash
-    brew install redis
-    brew services start redis  # Starts Redis and registers it to run automatically on boot
-    ```
-*   **Ollama (Local LLM)**:
-    ```bash
-    brew install ollama
-    # Or download the macOS App from https://ollama.com/download/mac
-    ```
-    After starting the Ollama app, open your terminal and pull the model:
-    ```bash
-    ollama pull llama3
-    ```
-
-#### 2. Project Setup & Installation
-Open your terminal in the project root directory and run:
-```bash
-# Setup Backend Virtual Environment & Dependencies
 cd server
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
 
-# Setup Frontend Dependencies
-cd ../frontend
+### Frontend
+
+```bash
+cd frontend
 npm install
 ```
 
----
+## Running Locally
 
-### 🐧 Linux Setup Guide (Ubuntu/Debian)
+Use four terminals for the complete stack.
 
-#### 1. System Dependencies Installation
-*   **Python, Pip & Virtual Environment**:
-    ```bash
-    sudo apt update
-    sudo apt install python3 python3-pip python3-venv -y
-    ```
-*   **Node.js & npm**:
-    ```bash
-    sudo apt install nodejs npm -y
-    ```
-*   **Redis Server**:
-    ```bash
-    sudo apt install redis-server -y
-    sudo systemctl enable --now redis-server
-    ```
-*   **Ollama (Local LLM)**:
-    ```bash
-    curl -fsSL https://ollama.com/install.sh | sh
-    ollama pull llama3
-    ```
+### 1. Start Redis
 
-#### 2. Project Setup & Installation
-Open your terminal in the project root directory and run:
+With Docker:
+
 ```bash
-# Setup Backend Virtual Environment & Dependencies
+docker run --name careerforge-redis -p 6379:6379 redis:alpine
+```
+
+Or start your existing Redis service.
+
+### 2. Start the Flask API
+
+Windows:
+
+```powershell
 cd server
-python3 -m venv venv
+.\venv\Scripts\python.exe -u api.py
+```
+
+macOS or Linux:
+
+```bash
+cd server
 source venv/bin/activate
-pip install -r requirements.txt
-
-# Setup Frontend Dependencies
-cd ../frontend
-npm install
+python -u api.py
 ```
 
----
+The API runs at `http://127.0.0.1:5000`.
 
-### 🚀 Running the Application
+On Windows, the development server uses Flask-SocketIO's threading backend to avoid the Python 3.13, Gevent, and Windows SSL recursion issue. Linux production continues to use Gevent.
 
-CareerForge features an **Intelligent Hybrid Architecture**. Choose the run configuration that best suits your developer preference:
+If the embedding model is already cached and Hugging Face is temporarily unavailable:
 
----
+```powershell
+$env:HF_HUB_OFFLINE="1"
+.\venv\Scripts\python.exe -u api.py
+```
 
-#### 🧊 Option A: Standalone Mode (Recommended - 2 Terminals Only)
-*Mimics the zero-cost cloud infrastructure (like Render Free Tier). Runs background processing inside native python daemon threads instead of requiring Redis/Celery pools.*
+### 3. Start the Celery Worker
 
-1.  Open [server/.env](file:///c:/Users/anurag.prajapati/Documents/Resume%20Analyzer/server/.env) and ensure `REDIS_URL` is **commented out** (e.g., `# REDIS_URL=...`).
-2.  **Terminal 1: Flask API Server (Backend)**
-    ```bash
-    cd server
-    # On Windows: .\venv\Scripts\activate  | On macOS/Linux: source venv/bin/activate
-    python api.py
-    ```
-3.  **Terminal 2: React Web UI (Frontend)**
-    ```bash
-    cd frontend
-    npm run dev
-    ```
+Windows:
 
----
+```powershell
+cd server
+.\venv\Scripts\celery.exe -A tasks worker --loglevel=info -P solo
+```
 
-#### ⛅ Option B: Cloud SaaS Mode (3 Terminals)
-*Leverages Cloud Redis (like Upstash) so you can test distributed Celery queues locally WITHOUT installing Redis on your computer.*
+macOS or Linux:
 
-1.  Ensure `REDIS_URL` is active in [server/.env](file:///c:/Users/anurag.prajapati/Documents/Resume%20Analyzer/server/.env) pointing to your Upstash/Cloud Redis instance.
-2.  **Terminal 1: Flask API Server (Backend)**
-    ```bash
-    cd server
-    # On Windows: .\venv\Scripts\activate  | On macOS/Linux: source venv/bin/activate
-    python api.py
-    ```
-3.  **Terminal 2: Celery Background Worker (AI Processor)**
-    ```bash
-    cd server
-    # On Windows: .\venv\Scripts\activate  | On macOS/Linux: source venv/bin/activate
-    celery -A celery_app worker --loglevel=info -P solo
-    ```
-4.  **Terminal 3: React Web UI (Frontend)**
-    ```bash
-    cd frontend
-    npm run dev
-    ```
-
----
-
-#### 🏢 Option C: Full Local Cluster Mode (4 Terminals)
-*Run a fully independent localized environment.*
-
-1.  **Terminal 1: Local Redis Server**
-    ```bash
-    redis-server # (On WSL2/Linux: sudo service redis-server start)
-    ```
-2.  **Terminal 2: Flask API Server**
-    ```bash
-    cd server
-    # Activate virtual environment...
-    python api.py
-    ```
-3.  **Terminal 3: Celery Background Worker**
-    ```bash
-    cd server
-    # Activate virtual environment...
-    celery -A celery_app worker --loglevel=info -P solo
-    ```
-4.  **Terminal 4: React Web UI**
-    ```bash
-    cd frontend
-    npm run dev
-    ```
-
----
-
-## 🐳 Docker Setup Guide (Recommended)
-
-Run the entire CareerForge suite (Nginx, React, Flask, Celery, and Redis) with a single command. This configuration leverages your host machine's Ollama instance to utilize full GPU acceleration (Option A).
-
-### 1. Prerequisites
-- [Docker & Docker Compose](https://www.docker.com/products/docker-desktop/) installed and running.
-- **Ollama** running locally on your host machine (with the `llama3` model pulled: `ollama pull llama3`).
-
-### 2. Quick Start
-From the project root directory, run:
 ```bash
-# Build and launch all services in the background
-docker-compose up -d --build
+cd server
+celery -A tasks worker --loglevel=info
 ```
 
-That's it! 
-- Access the **React Web UI** at `http://localhost:80` (or simply `http://localhost`).
-- The **Flask API** is exposed and accessible at `http://localhost:5000`.
+### 4. Start the Frontend
 
-### 3. Key Docker Configurations
-- **Ollama GPU Acceleration**: The `docker-compose.yml` uses `host.docker.internal` to route LLM requests out of the container directly to your host machine's Ollama, utilizing your GPU for lightning-fast analysis.
-- **Data Persistence**: Databases, indexed embeddings, and files are stored inside a persistent Docker volume (`backend_data`) so they remain intact even if you destroy or update containers.
-
-### 4. Useful Commands
 ```bash
-# View live logs from all services
-docker-compose logs -f
-
-# Stop and remove containers (preserving database volume)
-docker-compose down
-
-# Stop containers and wipe the database volume (clean reset)
-docker-compose down -v
+cd frontend
+npm run dev
 ```
 
-### 5. Running Instantly with Pre-Built Images (No Source Code Needed!)
+Open the URL printed by Vite, normally `http://localhost:5173`.
 
-For users who want to run the entire CareerForge suite instantly without downloading the source code or compiling anything locally, they can do so using pre-built Docker Hub images.
+## Docker Compose
 
-#### A. Prerequisites
-1. Install [Docker & Docker Compose](https://www.docker.com/products/docker-desktop/) on your system.
-2. Have [Ollama](https://ollama.com) running locally on your host machine with `llama3` downloaded:
-   ```bash
-   ollama pull llama3
-   ```
+Create `server/.env` before starting the stack. Docker Compose loads this file at container runtime for backend and Celery services.
 
-#### B. Quick Start Steps
-1. Create an empty folder on your computer.
-2. Inside that folder, create a file named `docker-compose.yml` and paste the following content:
-
-```yaml
-version: '3.8'
-
-services:
-  # 1. Message Broker
-  redis:
-    image: redis:alpine
-    container_name: careerforge-redis
-    ports:
-      - "6379:6379"
-    restart: always
-
-  # 2. Flask API Server
-  backend:
-    image: anuragprajapati123/careerforge-backend:latest
-    container_name: careerforge-backend
-    ports:
-      - "5000:5000"
-    environment:
-      - REDIS_URL=redis://redis:6379/0
-      - OLLAMA_HOST=http://host.docker.internal:11434
-      - DEFAULT_MODEL=llama3
-      - JWT_SECRET=careerforge-super-secret-key-2026
-    volumes:
-      - backend_data:/app/data
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      - redis
-    restart: always
-
-  # 3. Background Worker
-  celery:
-    image: anuragprajapati123/careerforge-backend:latest
-    container_name: careerforge-celery
-    command: celery -A tasks worker --loglevel=info
-    environment:
-      - REDIS_URL=redis://redis:6379/0
-      - OLLAMA_HOST=http://host.docker.internal:11434
-      - DEFAULT_MODEL=llama3
-    volumes:
-      - backend_data:/app/data
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      - redis
-    restart: always
-
-  # 4. React Frontend Web Server
-  frontend:
-    image: anuragprajapati123/careerforge-frontend:latest
-    container_name: careerforge-frontend
-    ports:
-      - "80:80"
-    depends_on:
-      - backend
-    restart: always
-
-volumes:
-  backend_data:
-    driver: local
+```bash
+docker compose up --build
 ```
 
-3. Open your terminal in that folder and run:
-   ```bash
-   docker-compose up -d
-   ```
-4. That's it! Access the web interface in your browser at: **`http://localhost`** (or `http://localhost:80`).
+| Service | Address |
+|---|---|
+| Frontend | `http://localhost` |
+| Backend | `http://localhost:5000` |
+| Redis | `localhost:6379` |
 
----
+Stop the stack:
 
-## ☁️ Cloud Production Deployment
-
-CareerForge is fully architected for professional, serverless, and micro-tier cloud delivery, minimizing operational costs while maximizing real-time SaaS capabilities.
-
-### 🏗️ Multi-Cloud Orchestration Framework
-
-| Infrastructure Layer | Provider | Deployment Configuration Details |
-| :--- | :--- | :--- |
-| **Modern SaaS UI** | **Vercel** | Next-gen Edge hosting with custom dynamic fallback routing configured inside [vercel.json](file:///c:/Users/anurag.prajapati/Documents/Resume%20Analyzer/frontend/vercel.json) to support React SPA architectures. |
-| **Real-Time Backend API** | **Render** | Containerized Docker deployment utilizing high-concurrency **Gevent** worker instances to maintain persistent socket tunnels and background RAG threads on a single node. |
-| **Persistent Storage** | **Neon Tech** | Managed, serverless PostgreSQL cluster with native TLS/SSL encryption constraints. |
-| **High-Speed Event Broker** | **Upstash** | Serverless Cloud Redis running over secure TLS (`rediss://`) for immediate cross-process event broadcasting. |
-
-### 🧠 Production-Grade Cloud Intelligence Handled
-
-To guarantee 100% operational stability across free/restricted cloud tier limits, our codebase natively implements three crucial engineering guardrails:
-
-1.  **Auto-Adaptive Cloud Routing**: The API automatically reads the native platform flag `RENDER=true`. If found, it seamlessly shifts asynchronous processing from paid background Celery containers into **native, concurrent Python Daemon Threads** on the main web node—bypassing all credit card requirements and running entirely for free!
-2.  **Self-Healing Vector Indexes**: Render’s local disks are ephemeral and wipe clean during daily server resets. Our Chat API intercepts missing `.index` files and **automatically regenerates the RAG FAISS vectors on-the-fly** from raw PostgreSQL text in `<0.1 seconds`, ensuring zero-maintenance stability!
-3.  **Multi-Protocol TLS Translators**: Our backend dynamically splits and translates secure Redis URLs—satisfying Celery's requirement for uppercase `CERT_NONE` while satisfying SocketIO's requirement for lowercase `none`—eliminating conflicts between conflicting third-party libraries.
-
----
-
-## 📁 Project Structure
-```text
-Resume Analyzer/
-├── frontend/           # React App (SaaS UI)
-├── server/             # Python Backend
-│   ├── api.py          # Flask API & SocketIO
-│   ├── tasks.py        # Celery Background Tasks
-│   ├── celery_app.py   # Celery Configuration
-│   ├── db.py           # SQLite handlers & Notifications
-│   ├── rag.py          # Vector store & Retrieval
-│   └── data/           # Persistent Storage
-└── README.md
+```bash
+docker compose down
 ```
 
----
+Remove containers and persisted backend data:
 
-## 🛡️ Privacy & Performance
-CareerForge uses a **Privacy-First** approach. All analysis is performed locally via Ollama. By utilizing Celery workers, the platform can handle concurrent high-volume analysis without crashing or slowing down the user experience.
+```bash
+docker compose down -v
+```
 
----
+## Authentication
 
-**Built with ❤️ for a better career journey.**
+- Access tokens expire after 15 minutes.
+- Refresh tokens are random, hashed in PostgreSQL, rotated on use, and stored in an HTTP-only cookie.
+- New accounts must verify their email before signing in.
+- Password reset links expire after one hour.
+- Candidate and hiring-manager roles are available during registration.
+
+For local cross-origin development, the frontend and backend must use compatible origins and cookie settings. Secure cookies may require HTTPS depending on the browser and environment.
+
+## API Overview
+
+Major endpoint groups include:
+
+- `/signup`, `/login`, `/refresh`, `/logout`
+- `/verify-email`, `/forgot-password`, `/reset-password`
+- `/upload`, `/analyze-advanced`, `/analyze/<resume_id>`
+- `/resumes`, `/history`
+- `/compare`, `/compare-my-resumes`
+- `/api/jobs`, `/api/job/<job_id>`
+- `/api/comparisons`
+- `/api/chat/sessions`
+- `/api/notifications`
+
+Protected endpoints expect:
+
+```http
+Authorization: Bearer <access-token>
+```
+
+## Frontend Design
+
+The current interface uses a dark, violet-first visual system:
+
+- Primary accent: `#8A4CEF`
+- Application background: `#08070E`
+- Surface background: `#111018`
+- Typography: Inter-first system font stack
+- Responsive, fixed-height authentication screens
+- Fixed landing-page navigation
+
+Shared design tokens live in [`frontend/src/index.css`](frontend/src/index.css).
+
+## Build and Quality Checks
+
+Frontend production build:
+
+```bash
+cd frontend
+npm run build
+```
+
+Frontend lint:
+
+```bash
+npm run lint
+```
+
+Python syntax check:
+
+```powershell
+cd server
+.\venv\Scripts\python.exe -m compileall -q -x "venv" .
+```
+
+## Data and Privacy Notes
+
+- Resume text and job descriptions are sent to Google Gemini for AI-generated feedback.
+- Persisted PDFs may be uploaded to Cloudinary when Cloudinary is configured.
+- Parsed resume data, authentication data, analysis history, and chat messages are stored in PostgreSQL.
+- FAISS indexes are stored under `server/data/vector_store` and excluded from Git.
+
+Do not describe the current system as fully local or offline. Only deterministic scoring and embedding generation run locally; generated feedback uses Gemini.
+
+## Current Limitations
+
+- The frontend bundle is large and should be code-split.
+- Automated backend and end-to-end tests still need to be added.
+- `server/pipeline.py` and `server/main.py` contain legacy or diagnostic code.
+- Production deployments should use managed secrets, HTTPS, persistent storage, and production Redis.
+
+## License
+
+Add the intended project license before distributing CareerForge publicly.

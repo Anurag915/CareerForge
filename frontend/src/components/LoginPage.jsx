@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
-import { LogIn, Mail, Lock, Loader2, AlertCircle, ArrowLeft, CheckCircle2, ShieldCheck, MailCheck, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Loader2, AlertCircle, CheckCircle2, ShieldCheck, MailCheck, Eye, EyeOff } from 'lucide-react';
 
 const LoginPage = () => {
     const [email, setEmail] = useState('');
@@ -64,15 +64,15 @@ const LoginPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex text-slate-900 dark:text-slate-100 font-sans theme-transition selection:bg-blue-500/20 selection:text-blue-500">
+        <div className="h-dvh overflow-hidden bg-slate-50 dark:bg-slate-950 flex text-slate-900 dark:text-slate-100 font-sans theme-transition selection:bg-blue-500/20 selection:text-blue-500">
             
             {/* Left Panel - Branding (Desktop only) */}
-            <div className="hidden lg:flex flex-col justify-between w-[45%] max-w-[600px] bg-slate-900 text-white p-12 lg:p-16 relative overflow-hidden border-r border-slate-800">
+            <div className="hidden lg:flex flex-col justify-center w-[44%] max-w-[600px] bg-slate-900 text-white p-10 xl:p-14 relative overflow-hidden border-r border-slate-800">
                 {/* Decorative Gradients */}
                 <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[120px] pointer-events-none" />
                 <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none" />
 
-                <div className="relative z-10 space-y-16">
+                <div className="relative z-10 space-y-10 xl:space-y-12">
                     {/* Logo */}
                     <Link to="/" className="flex items-center space-x-3 w-fit group">
                         <img src="/logo.svg" alt="CareerForge Icon" className="h-10 w-10 object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] brightness-125 group-hover:scale-105 transition-transform" />
@@ -82,16 +82,16 @@ const LoginPage = () => {
                     </Link>
 
                     {/* Value Prop */}
-                    <div className="space-y-6">
-                        <h1 className="text-5xl xl:text-6xl font-black tracking-tight leading-[1.1]">Build Resumes That Get Interviews</h1>
-                        <p className="text-slate-400 text-lg leading-relaxed max-w-md">
-                            Analyze resumes, improve ATS scores, optimize keywords, and get AI-powered recommendations before applying.
+                    <div className="space-y-4">
+                        <h1 className="text-4xl xl:text-5xl font-black tracking-tight leading-[1.08]">A stronger resume starts here<span className="text-blue-500">.</span></h1>
+                        <p className="text-slate-400 text-base leading-relaxed max-w-md">
+                            Score, improve, and compare your resume before you apply.
                         </p>
                     </div>
 
                     {/* Feature List */}
-                    <ul className="space-y-5">
-                        {['ATS Resume Analysis', 'AI Resume Copilot', 'Resume Comparison', 'Candidate Evaluation'].map((f, i) => (
+                    <ul className="space-y-3.5">
+                        {['ATS match analysis', 'Focused AI recommendations', 'Resume comparison'].map((f, i) => (
                             <li key={i} className="flex items-center gap-4 text-slate-300">
                                 <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center">
                                     <CheckCircle2 className="w-4 h-4 text-blue-400" />
@@ -102,51 +102,36 @@ const LoginPage = () => {
                     </ul>
                 </div>
 
-                {/* Subtle Statistics */}
-                <div className="relative z-10 flex gap-12 pt-12 border-t border-slate-800/50 mt-12">
-                    <div>
-                        <div className="text-3xl font-black tracking-tight">10,000+</div>
-                        <div className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-1.5">Resumes Analyzed</div>
-                    </div>
-                    <div>
-                        <div className="text-3xl font-black tracking-tight">94%</div>
-                        <div className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-1.5">ATS Accuracy</div>
-                    </div>
-                    <div>
-                        <div className="text-3xl font-black tracking-tight">4.9/5</div>
-                        <div className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-1.5">User Satisfaction</div>
-                    </div>
-                </div>
             </div>
 
             {/* Right Panel - Auth Form */}
-            <div className="flex-1 flex flex-col items-center justify-center p-6 relative overflow-y-auto">
+            <div className="flex-1 min-h-0 flex flex-col items-center justify-center px-5 py-4 relative overflow-hidden">
                 {/* Mobile Brand Navigation */}
-                <Link to="/" className="absolute top-8 left-6 lg:hidden flex items-center gap-3 group z-20 hover:scale-105 opacity-90 hover:opacity-100 transition-all duration-200">
+                <Link to="/" className="absolute top-4 left-5 lg:hidden flex items-center gap-3 group z-20 hover:scale-105 opacity-90 hover:opacity-100 transition-all duration-200">
                     <img src="/logo.svg" alt="CareerForge Icon" className="h-8 w-8 object-contain dark:drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] dark:brightness-125" />
                     <span className="text-xl font-extrabold tracking-tight font-outfit">
                         <span className="text-slate-900 dark:text-white">Career</span><span className="text-blue-500 dark:text-blue-400">Forge</span>
                     </span>
                 </Link>
 
-                <div className="w-full max-w-[460px] space-y-8 py-12">
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+                <div className="w-full max-w-[440px] mt-12 lg:mt-0">
+                    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
                         
                         {/* Header Area */}
-                        <div className="text-left space-y-3">
+                        <div className="text-left space-y-2">
                             <div className="lg:hidden flex items-center space-x-3 mb-8 hidden">
                                 <img src="/logo.svg" alt="CareerForge Icon" className="h-12 w-12 object-contain dark:drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] dark:brightness-125" />
                                 <span className="text-3xl font-extrabold tracking-tight font-outfit">
                                     <span className="text-slate-900 dark:text-white">Career</span><span className="text-blue-500 dark:text-blue-400">Forge</span>
                                 </span>
                             </div>
-                            <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Welcome Back</h2>
+                            <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Welcome back</h2>
                             <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-                                Analyze resumes, improve ATS scores, and manage candidates with AI-powered insights.
+                                Sign in to continue improving your applications.
                             </p>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="space-y-5">
+                        <form onSubmit={handleSubmit} className="space-y-3.5">
                             {/* Email */}
                             <div className="space-y-1.5">
                                 <label className="text-xs font-bold text-slate-600 dark:text-slate-400 px-1">Email Address</label>
@@ -155,7 +140,7 @@ const LoginPage = () => {
                                     <input 
                                         type="email"
                                         required
-                                        className="w-full pl-11 pr-4 py-3.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 dark:focus:border-blue-400 transition-all text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 font-medium shadow-sm"
+                                        className="w-full pl-11 pr-4 py-3 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 dark:focus:border-blue-400 transition-all text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 font-medium shadow-sm"
                                         placeholder="name@company.com"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
@@ -171,7 +156,7 @@ const LoginPage = () => {
                                     <input 
                                         type={showPassword ? "text" : "password"}
                                         required
-                                        className="w-full pl-11 pr-12 py-3.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 dark:focus:border-blue-400 transition-all text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 font-medium shadow-sm"
+                                        className="w-full pl-11 pr-12 py-3 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 dark:focus:border-blue-400 transition-all text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 font-medium shadow-sm"
                                         placeholder="••••••••"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
@@ -238,13 +223,13 @@ const LoginPage = () => {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <span>Sign In to CareerForge</span>}
                             </button>
                             
                             {/* Trust Indicators */}
-                            <div className="flex items-center justify-center gap-4 pt-3">
+                            <div className="hidden sm:flex items-center justify-center gap-4 pt-1">
                                 <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
                                     <span>Secure</span>
@@ -263,7 +248,7 @@ const LoginPage = () => {
                         </form>
 
                         {/* Redirect */}
-                        <div className="text-center pt-4 border-t border-slate-200 dark:border-slate-800/50">
+                        <div className="text-center pt-3 border-t border-slate-200 dark:border-slate-800/50">
                             <p className="text-sm text-slate-600 dark:text-slate-400">
                                 Don't have an account? <Link to="/signup" className="text-blue-600 dark:text-blue-400 font-bold hover:underline">Sign up for free</Link>
                             </p>

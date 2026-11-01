@@ -2,14 +2,43 @@
 
 @theme {
   --dark-mode: selector;
+
+  /* Jobbie-inspired violet palette. Existing blue utilities intentionally
+     resolve to this scale so every product surface shares one accent. */
+  --color-blue-50: #f6f1ff;
+  --color-blue-100: #ede3ff;
+  --color-blue-200: #d9c4ff;
+  --color-blue-300: #c39dff;
+  --color-blue-400: #a875f8;
+  --color-blue-500: #8a4cef;
+  --color-blue-600: #7537db;
+  --color-blue-700: #602bb8;
+  --color-blue-800: #452181;
+  --color-blue-900: #28154d;
+
+  --color-indigo-400: #b184ff;
+  --color-indigo-500: #9360f4;
+  --color-indigo-600: #7b3ee3;
+
+  --color-slate-50: #f8f7fb;
+  --color-slate-100: #efedf4;
+  --color-slate-200: #dedbe7;
+  --color-slate-300: #c4c0d0;
+  --color-slate-400: #a8a8b6;
+  --color-slate-500: #858292;
+  --color-slate-600: #696575;
+  --color-slate-700: #3a3850;
+  --color-slate-800: #2a2838;
+  --color-slate-900: #111018;
+  --color-slate-950: #08070e;
 }
 
 :root {
   --font-sans: 'Inter', 'Outfit', system-ui, -apple-system, sans-serif;
   
   /* Tailwind v4 Auto-Discovery Variables */
-  --color-accent-500: #3b82f6;
-  --color-accent-600: #2563eb;
+  --color-accent-500: #8a4cef;
+  --color-accent-600: #7537db;
   
   --bg-app: #f8fafc;
   --bg-sidebar: #ffffff;
@@ -24,25 +53,71 @@
 }
 
 .dark {
-  --bg-app: #0f172a;
-  --bg-sidebar: #020617;
-  --bg-card: #1e293b;
-  --border-subtle: #334155;
-  --text-primary: #f1f5f9;
-  --text-muted: #94a3b8;
+  --bg-app: #08070e;
+  --bg-sidebar: #0b0912;
+  --bg-card: #111018;
+  --border-subtle: #2a2838;
+  --text-primary: #ffffff;
+  --text-muted: #b4b4c2;
   --text-on-accent: #ffffff;
 
-  --glass-bg: rgba(15, 23, 42, 0.7);
-  --glass-border: rgba(51, 65, 85, 0.5);
+  --glass-bg: rgba(8, 7, 14, 0.78);
+  --glass-border: rgba(255, 255, 255, 0.08);
 }
 
 /* Base styles for ultra-clean look */
 body {
   margin: 0;
   font-family: var(--font-sans);
+  background:
+    radial-gradient(circle at 50% -20%, rgba(138, 76, 239, 0.18), transparent 38rem),
+    #08070e;
+  color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+::selection {
+  background: rgba(138, 76, 239, 0.34);
+  color: #fff;
+}
+
+/* Shared product canvas and surface language */
+.app-canvas {
+  background:
+    radial-gradient(circle at 72% -12%, rgba(138, 76, 239, 0.12), transparent 30rem),
+    linear-gradient(180deg, rgba(16, 14, 29, 0.92), rgba(8, 7, 14, 0.98) 28rem);
+}
+
+.jobbie-surface {
+  background: rgba(17, 16, 24, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 70px -36px rgba(138, 76, 239, 0.5);
+  backdrop-filter: blur(18px);
+}
+
+.brand-accent {
+  color: #c9a8ff;
+}
+
+img[src="/logo.svg"] {
+  filter: hue-rotate(48deg) saturate(1.45) brightness(1.18);
+}
+
+input,
+textarea,
+select {
+  accent-color: #8a4cef;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid #c9a8ff;
+  outline-offset: 3px;
 }
 
 /* Premium Shadows */
@@ -55,7 +130,7 @@ body {
 }
 
 .shadow-premium {
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 24px 70px -34px rgba(138, 76, 239, 0.45);
 }
 
 /* Glassmorphism */
@@ -67,10 +142,10 @@ body {
 }
 
 .dark .glass-dark {
-  background: rgba(15, 23, 42, 0.8);
+  background: rgba(8, 7, 14, 0.84);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* Custom Scrollbar */
