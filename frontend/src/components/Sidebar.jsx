@@ -64,7 +64,7 @@ const Sidebar = ({ activeTab, onTabClick, user, collapsed, onToggle }) => {
         <motion.aside
             animate={{ width: collapsed ? 80 : 260 }}
             transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="h-screen bg-white dark:bg-[#0f1117] border-r border-slate-200 dark:border-slate-800 flex flex-col shrink-0 relative z-50 shadow-[4px_0_24px_rgba(0,0,0,0.02)] dark:shadow-none"
+            className="h-screen bg-white dark:bg-[#0b0912] border-r border-slate-200 dark:border-white/[0.07] flex flex-col shrink-0 relative z-50 shadow-[4px_0_24px_rgba(0,0,0,0.02)] dark:shadow-[14px_0_60px_-42px_rgba(138,76,239,0.65)]"
         >
             {/* Header Area with Logo and Toggle */}
             <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 dark:border-slate-900 shrink-0">

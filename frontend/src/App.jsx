@@ -389,7 +389,7 @@ function App() {
 
   if (!token || isPublicActionRoute) {
     return (
-      <div className={`${theme} flex h-screen bg-slate-50 dark:bg-[#0f1117] text-slate-900 dark:text-slate-100 overflow-hidden theme-transition font-sans`}>
+      <div className={`${theme} flex h-screen bg-slate-50 dark:bg-[#08070e] text-slate-900 dark:text-slate-100 overflow-hidden theme-transition font-sans`}>
         <div className="flex-1 overflow-y-auto">
           <Routes>
             <Route path="/login" element={<LoginPage />} />
@@ -406,7 +406,7 @@ function App() {
   }
 
   return (
-    <div className={`${theme} flex h-screen bg-slate-50 dark:bg-[#0f1117] text-slate-900 dark:text-slate-100 overflow-hidden theme-transition font-sans`}>
+    <div className={`${theme} flex h-screen bg-slate-50 dark:bg-[#08070e] text-slate-900 dark:text-slate-100 overflow-hidden theme-transition font-sans`}>
       
       {/* Left Sidebar Navigation */}
       <Sidebar 
@@ -433,7 +433,7 @@ function App() {
         />
 
         {/* Scrollable Content Area */}
-        <main className={`flex-1 overflow-y-auto relative z-10 w-full ${activeTab === "copilot" || activeTab === "chat" ? "p-0" : "p-4 md:p-6"}`}>
+        <main className={`app-canvas flex-1 overflow-y-auto relative z-10 w-full ${activeTab === "copilot" || activeTab === "chat" ? "p-0" : "p-4 md:p-6"}`}>
           
           {/* Global Error Notification */}
           <AnimatePresence>

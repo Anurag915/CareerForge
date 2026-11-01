@@ -1,11 +1,17 @@
-from gevent import monkey
-monkey.patch_all()
+import os
+
+# gevent's SSL monkey patch currently recurses inside truststore on Windows
+# with Python 3.13 when Sentence Transformers contacts Hugging Face.  The
+# development server does not need gevent, so keep it for Linux production
+# only and use Flask-SocketIO's threading backend on Windows.
+if os.name != 'nt':
+    from gevent import monkey
+    monkey.patch_all()
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 import json
-import os
 import uuid
 import db
 import rag
@@ -70,7 +76,13 @@ if RAW_REDIS.startswith('rediss://') and 'ssl_cert_reqs' not in RAW_REDIS:
     SOCKET_REDIS_URL = f"{RAW_REDIS}{separator}ssl_cert_reqs=none"
 
 # Initialize Socket.IO with Redis as message queue for cross-process communication
-socketio = SocketIO(app, cors_allowed_origins="*", message_queue=SOCKET_REDIS_URL, async_mode='gevent')
+SOCKET_ASYNC_MODE = 'threading' if os.name == 'nt' else 'gevent'
+socketio = SocketIO(
+    app,
+    cors_allowed_origins="*",
+    message_queue=SOCKET_REDIS_URL,
+    async_mode=SOCKET_ASYNC_MODE,
+)
 
 from flask_socketio import join_room
 

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # 1. Message Broker for Celery Background Jobs
   redis:
@@ -17,15 +15,12 @@ services:
     container_name: careerforge-backend
     ports:
       - "5000:5000"
+    env_file:
+      - ./server/.env
     environment:
       - REDIS_URL=redis://redis:6379/0
-      - OLLAMA_HOST=http://host.docker.internal:11434
-      - DEFAULT_MODEL=llama3
-      - JWT_SECRET=careerforge-super-secret-key-2026
     volumes:
       - backend_data:/app/data
-    extra_hosts:
-      - "host.docker.internal:host-gateway" # Resolves host's localhost inside Linux containers
     depends_on:
       - redis
     restart: always
@@ -37,14 +32,12 @@ services:
       dockerfile: Dockerfile
     container_name: careerforge-celery
     command: celery -A tasks worker --loglevel=info
+    env_file:
+      - ./server/.env
     environment:
       - REDIS_URL=redis://redis:6379/0
-      - OLLAMA_HOST=http://host.docker.internal:11434
-      - DEFAULT_MODEL=llama3
     volumes:
       - backend_data:/app/data
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     depends_on:
       - redis
     restart: always
